@@ -1,0 +1,27 @@
+{
+  "uid": "eos-drift",
+  "title": "EOS Latent Drift",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-7d", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "MMD squared drift score",
+      "gridPos": { "x": 0, "y": 0, "w": 16, "h": 8 },
+      "targets": [
+        { "expr": "eos_mmd_score", "legendFormat": "{{job}}" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Drift alarms",
+      "gridPos": { "x": 16, "y": 0, "w": 8, "h": 8 },
+      "targets": [
+        { "expr": "eos_mmd_alarm", "legendFormat": "{{job}}" }
+      ]
+    }
+  ]
+}

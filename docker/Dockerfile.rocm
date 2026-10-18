@@ -1,0 +1,29 @@
+FROM rocm/pytorch:rocm10.1.0_ubuntu24.04_py3.12_pytorch_release_2.14.0
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    HIP_VISIBLE_DEVICES=0 \
+    MIOPEN_FIND_MODE=FAST \
+    LD_LIBRARY_PATH=/usr/lib/wsl/lib \
+    UV_LINK_MODE=copy
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:${PATH}"
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
+
+WORKDIR /workspace
+
+COPY pyproject.toml uv.lock README.md ./
+RUN uv venv --system-site-packages /opt/venv \
+    && uv sync \
+        --all-groups \
+        --extra notebook \
+        --no-install-package torch \
+        --no-install-package torchvision \
+        --no-install-project
+
+CMD ["bash"]

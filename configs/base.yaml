@@ -1,0 +1,53 @@
+data:
+  root: data/raw/eurosat
+  image_size: 64
+  channels: 3
+  num_classes: 10
+  batch_size: 128
+  num_workers: 4
+  val_fraction: 0.15
+  test_fraction: 0.15
+  seed: 42
+  mean: [0.5, 0.5, 0.5]
+  std: [0.5, 0.5, 0.5]
+
+model:
+  input_size: 64
+  latent_dim: 128
+  base_channels: 32
+  downsample_stages: 4
+  num_classes: 10
+  dropout: 0.3
+  recon_alpha: 0.85
+  recon_lambda: 0.3
+  kernel_size: 3
+  output_activation: sigmoid
+
+train:
+  max_epochs: 30
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  warmup_epochs: 2
+  gradient_clip: 1.0
+  precision: bf16-mixed
+  accelerator: auto
+  devices: 1
+  seed: 42
+  fast_dev_run: false
+
+asvd:
+  preserve_energy: 0.95
+  min_rank: 1
+  skip_last_layer: true
+  min_compression_gain: 1.0
+
+mmd:
+  bandwidth_multipliers: [0.25, 0.5, 1.0, 2.0, 4.0]
+  sigma_threshold: 3.0
+  max_baseline_samples: 500
+  normalize: true
+
+telemetry:
+  service_name: eos-telemetry
+  pushgateway_url: http://localhost:9091
+  prometheus_url: http://localhost:9090

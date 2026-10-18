@@ -1,0 +1,71 @@
+# --- Python -----------------------------------------------------------------
+**/.venv/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+site-packages/
+
+# --- Quality tool caches ----------------------------------------------------
+**/.mypy_cache/
+**/.pytest_cache/
+**/.ruff_cache/
+.hypothesis/
+.coverage
+coverage.xml
+htmlcov/
+
+# --- Secrets and local environment (never committed) ------------------------
+.env
+.env.*
+*.pem
+*.key
+.credentials*
+**/.streamlit/secrets.toml
+
+# --- Data and experiment artifacts -----------------------------------------
+**/data/raw/
+**/data/processed/
+**/mlruns/
+**/mlartifacts/
+**/mlflow.db
+**/*.db
+**/optuna_study.db
+**/checkpoints/
+**/*.ckpt
+**/*.pt
+**/*.onnx
+
+# --- Local scratch ----------------------------------------------------------
+.tmp/
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db
+*.log
+.cache/
+pytest-of-*/
+
+# --- Hard restriction: vendored reference project artifacts ------------------
+references/**/.venv/
+references/**/mlruns/
+references/**/.mypy_cache/
+references/**/.pytest_cache/
+references/**/.ruff_cache/
+
+# --- Agent tooling: local only, never published ------------------------------
+AGENTS.md
+CLAUDE.md
+*.local.md
+.dsh/
+.opencode/
+.agents/
+.claude/
+.cursor/
+.cursorrules
+.windsurf/
+.codex/
+opencode.json
+.secrets/
+skills-lock.json
+.vscode/PythonImportHelper-v2-Completion.json

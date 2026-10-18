@@ -1,0 +1,123 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "eos-autoencoder-engine"
+version = "0.1.0"
+description = "Hybrid convolutional autoencoder for EuroSAT land-cover classification, ASVD compression, and RKHS latent drift telemetry"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "Mohammed Ayman" }]
+dependencies = [
+    "kornia>=0.8.0,<1.0.0",
+    "lightning>=2.6.0,<3.0.0",
+    "matplotlib>=3.9.0,<4.0.0",
+    "mlflow>=3.12.0,<4.0.0",
+    "numpy>=2.1.0,<3.0.0",
+    "pandas>=2.2.0,<3.0.0",
+    "pillow>=10.4.0,<13.0.0",
+    "prometheus-client>=0.21.0,<1.0.0",
+    "pydantic>=2.9.0,<3.0.0",
+    "pydantic-settings>=2.6.0,<3.0.0",
+    "python-dotenv>=1.0.0,<2.0.0",
+    "pyyaml>=6.0.2,<7.0.0",
+    "scikit-learn>=1.5.0,<2.0.0",
+    "seaborn>=0.13.0,<1.0.0",
+    "torch>=2.9.0",
+    "torchmetrics>=1.9.0,<2.0.0",
+    "torchvision>=0.24.0",
+    "tqdm>=4.66.0,<5.0.0",
+]
+
+[project.optional-dependencies]
+notebook = [
+    "ipykernel>=6.29.0,<7.0.0",
+    "jupyterlab>=4.2.0,<5.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.115.0",
+    "mypy>=1.15.0",
+    "pre-commit>=4.0.0",
+    "pytest>=8.3.0",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.9.0",
+    "types-pyyaml>=6.0.12",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "scripts", "tests"]
+extend-include = ["*.ipynb"]
+extend-exclude = [
+    "references",
+    ".opencode",
+    ".cache",
+    "data",
+    "docker",
+    "mlruns",
+    "pytest-of-*",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "ANN", "D", "ERA", "SIM", "PL", "PT", "RUF", "PTH"]
+ignore = ["D203", "D213", "PLR2004"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D103", "ANN001", "ANN201", "ANN202"]
+"notebooks/**" = ["D", "ANN"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src", "scripts"]
+mypy_path = "src"
+warn_unreachable = true
+show_error_codes = true
+pretty = true
+
+[[tool.mypy.overrides]]
+module = ["mlflow.*", "kornia.*", "torchmetrics.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+markers = [
+    "gpu: requires a ROCm capable GPU",
+    "slow: long running test",
+    "integration: end-to-end pipeline test",
+]
+filterwarnings = ["error::DeprecationWarning:eos.*"]
+
+[tool.coverage.run]
+source = ["src/eos"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+exclude_lines = ["pragma: no cover", "if __name__ == .__main__.:"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/eos"]

@@ -1,0 +1,27 @@
+{
+  "uid": "eos-compression",
+  "title": "EOS Compression",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-7d", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "ASVD parameter ratio",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "eos_asvd_param_ratio", "legendFormat": "{{job}}" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Macro F1 delta",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "eos_asvd_f1_delta", "legendFormat": "{{job}}" }
+      ]
+    }
+  ]
+}

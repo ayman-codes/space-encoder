@@ -1,0 +1,15 @@
+train:
+  max_epochs: 1
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  warmup_epochs: 0
+  gradient_clip: 1.0
+  precision: 32-true
+  accelerator: cpu
+  devices: 1
+  seed: 42
+  fast_dev_run: true
+
+data:
+  batch_size: 8
+  num_workers: 0

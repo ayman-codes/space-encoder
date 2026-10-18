@@ -1,0 +1,27 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.1
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: contract-gate
+        name: contract gate (comments, docstrings, configs)
+        entry: uv run python scripts/validate_contracts.py
+        language: system
+        pass_filenames: false
+
+      - id: mypy-strict
+        name: mypy strict
+        entry: uv run mypy
+        language: system
+        pass_filenames: false
+
+      - id: pytest-fast
+        name: pytest fast subset
+        entry: uv run pytest -q -m "not gpu and not slow and not integration"
+        language: system
+        pass_filenames: false
