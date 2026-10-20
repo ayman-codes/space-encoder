@@ -1,0 +1,177 @@
+schema: '2.0'
+stages:
+  fetch:
+    cmd: uv run eos-data fetch
+    deps:
+    - path: data/contracts/eurosat-rgb.contract.yaml
+      hash: md5
+      md5: a8306f229595d7500a8148edd2dce51e
+      size: 996
+    - path: src/eos/config.py
+      hash: md5
+      md5: f6d979b765ed809d7188e5076f4ca7cc
+      size: 18888
+    - path: src/eos/dataset/cli.py
+      hash: md5
+      md5: e5492c46f973ec5117ceb3e5fa226ef5
+      size: 22489
+    - path: src/eos/dataset/ingest.py
+      hash: md5
+      md5: 203c5a0f3ffd099a0ad76ed383375e45
+      size: 15027
+    params:
+      configs/base.yaml:
+        pipeline:
+          contract_path: data/contracts/eurosat-rgb.contract.yaml
+          raw_root: data/raw
+          processed_root: data/processed
+          manifest_root: data/manifests
+          quarantine_root: data/quarantine
+          run_root: data/runs
+          retry:
+            attempts: 5
+            base_delay_seconds: 1.0
+            max_delay_seconds: 30.0
+            timeout_seconds: 60.0
+          storage:
+            mode: local
+            s3_bucket:
+            s3_prefix: eos/datasets/eurosat-rgb
+            region:
+            verify_checksums: true
+    outs:
+    - path: data/raw/EuroSAT_RGB.zip
+      hash: md5
+      md5: f46e308c4d50d4bf32fedad2d3d62f3b
+      size: 94658721
+  extract:
+    cmd: uv run eos-data extract
+    deps:
+    - path: data/contracts/eurosat-rgb.contract.yaml
+      hash: md5
+      md5: a8306f229595d7500a8148edd2dce51e
+      size: 996
+    - path: data/raw/EuroSAT_RGB.zip
+      hash: md5
+      md5: f46e308c4d50d4bf32fedad2d3d62f3b
+      size: 94658721
+    - path: src/eos/dataset/cli.py
+      hash: md5
+      md5: e5492c46f973ec5117ceb3e5fa226ef5
+      size: 22489
+    - path: src/eos/dataset/ingest.py
+      hash: md5
+      md5: 203c5a0f3ffd099a0ad76ed383375e45
+      size: 15027
+    outs:
+    - path: data/raw/eurosat
+      hash: md5
+      md5: f9da5945cc8314c999175c0b679f82e7.dir
+      size: 91844784
+      nfiles: 27001
+  validate:
+    cmd: uv run eos-data validate
+    deps:
+    - path: data/contracts/eurosat-rgb.contract.yaml
+      hash: md5
+      md5: a8306f229595d7500a8148edd2dce51e
+      size: 996
+    - path: data/raw/eurosat
+      hash: md5
+      md5: f9da5945cc8314c999175c0b679f82e7.dir
+      size: 91844784
+      nfiles: 27001
+    - path: src/eos/dataset/duplicates.py
+      hash: md5
+      md5: 6fbc9513202e5e9bca99e205526fc027
+      size: 11310
+    - path: src/eos/dataset/manifest.py
+      hash: md5
+      md5: 181ad4a400a785a6db31a46f8a701a85
+      size: 13041
+    - path: src/eos/dataset/validate.py
+      hash: md5
+      md5: e5ff6a7ec854c5244752efe4ecd1f910
+      size: 23450
+    outs:
+    - path: data/processed/eurosat-rgb-v1.0.0/base_manifest.parquet
+      hash: md5
+      md5: 95c360392429d1b6a6e10141be3eeb9a
+      size: 2554347
+  split:
+    cmd: uv run eos-data split
+    deps:
+    - path: data/contracts/eurosat-rgb.contract.yaml
+      hash: md5
+      md5: a8306f229595d7500a8148edd2dce51e
+      size: 996
+    - path: data/processed/eurosat-rgb-v1.0.0/base_manifest.parquet
+      hash: md5
+      md5: 95c360392429d1b6a6e10141be3eeb9a
+      size: 2554347
+    - path: src/eos/dataset/cli.py
+      hash: md5
+      md5: e5492c46f973ec5117ceb3e5fa226ef5
+      size: 22489
+    - path: src/eos/dataset/manifest.py
+      hash: md5
+      md5: 181ad4a400a785a6db31a46f8a701a85
+      size: 13041
+    - path: src/eos/dataset/splits.py
+      hash: md5
+      md5: 0a4c72c6e10120ebc7fa502a699e21f2
+      size: 5748
+    outs:
+    - path: data/processed/eurosat-rgb-v1.0.0/manifest.parquet
+      hash: md5
+      md5: 7388d0b3b7066f8acffe967960263f25
+      size: 2558875
+  curate:
+    cmd: uv run eos-data curate
+    deps:
+    - path: data/contracts/eurosat-rgb.contract.yaml
+      hash: md5
+      md5: a8306f229595d7500a8148edd2dce51e
+      size: 996
+    - path: data/processed/eurosat-rgb-v1.0.0/manifest.parquet
+      hash: md5
+      md5: 7388d0b3b7066f8acffe967960263f25
+      size: 2558875
+    - path: data/raw/eurosat
+      hash: md5
+      md5: f9da5945cc8314c999175c0b679f82e7.dir
+      size: 91844784
+      nfiles: 27001
+    - path: src/eos/dataset/cli.py
+      hash: md5
+      md5: e5492c46f973ec5117ceb3e5fa226ef5
+      size: 22489
+    - path: src/eos/dataset/curate.py
+      hash: md5
+      md5: 7e1d01cffa1c098431a9c4e8234b3d08
+      size: 9735
+    outs:
+    - path: data/processed/eurosat-rgb-v1.0.0/images_uint8.npy
+      hash: md5
+      md5: 2fbb6c69b8bcbe3d2d921d98df8dab41
+      size: 331776128
+    - path: data/processed/eurosat-rgb-v1.0.0/labels_int64.npy
+      hash: md5
+      md5: c45acece77b9ce8a6935a0af2d146311
+      size: 216128
+    - path: data/processed/eurosat-rgb-v1.0.0/stats.json
+      hash: md5
+      md5: bdeed93ee41cc51b5374cbe37e6cbe6b
+      size: 4246
+    - path: data/processed/eurosat-rgb-v1.0.0/test_indices.npy
+      hash: md5
+      md5: 5e4b514ff7314ec93a66886c30cbe90c
+      size: 32528
+    - path: data/processed/eurosat-rgb-v1.0.0/train_indices.npy
+      hash: md5
+      md5: 9eacf2ab116987239b774d3f89390ea2
+      size: 151328
+    - path: data/processed/eurosat-rgb-v1.0.0/val_indices.npy
+      hash: md5
+      md5: bc72ecc90bb4b1d1be22ef421494210f
+      size: 32528

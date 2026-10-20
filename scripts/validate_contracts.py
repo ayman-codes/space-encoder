@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from eos.contracts import scan_tree, validate_configs
+from eos.contracts import scan_tree, validate_configs, validate_dataset_contracts
 
 
 def main() -> int:
@@ -17,6 +17,7 @@ def main() -> int:
     root = Path(__file__).resolve().parents[1]
     violations = scan_tree(root)
     violations.extend(validate_configs(root / "configs"))
+    violations.extend(validate_dataset_contracts(root / "data" / "contracts"))
     for violation in violations:
         print(f"{violation.path}:{violation.line}: [{violation.code}] {violation.message}")
     if violations:

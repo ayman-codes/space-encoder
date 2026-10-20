@@ -43,18 +43,22 @@ class DataConfig(FrozenModel):
         val_fraction (float): Validation share of the full dataset.
         test_fraction (float): Test share of the full dataset.
         seed (int): Deterministic split and augmentation seed.
-        mean (tuple[float, ...]): Per-channel means used for radiometric
-            centering. Must match ``channels``.
-        std (tuple[float, ...]): Per-channel standard deviations. Must be
-            strictly positive and match ``channels``.
+        curated_root (Path): Directory containing the curated manifest, image
+            memmap, labels, and split indices produced by the data pipeline.
 
     Raises:
         ValueError: If the split fractions do not leave a positive training
-            share, if the normalization tuples do not match ``channels``, or if
-            any standard deviation is not positive.
+            share.
+
+    Note:
+        Radiometric normalization is deliberately absent. Inputs stay in
+        ``[0, 1]`` and the decoder terminates with a sigmoid, so centering or
+        scaling statistics have no place in the model contract. The measured
+        channel statistics live in ``stats.json`` beside the curated arrays.
     """
 
     root: Path = Path("data/raw/eurosat")
+    curated_root: Path = Path("data/processed/eurosat-rgb-v1.0.0")
     image_size: int = Field(default=64, ge=16, le=512)
     channels: int = Field(default=3, ge=1, le=13)
     num_classes: int = Field(default=10, ge=2)
@@ -63,8 +67,6 @@ class DataConfig(FrozenModel):
     val_fraction: float = Field(default=0.15, gt=0.0, lt=1.0)
     test_fraction: float = Field(default=0.15, gt=0.0, lt=1.0)
     seed: int = Field(default=42, ge=0)
-    mean: tuple[float, ...] = (0.5, 0.5, 0.5)
-    std: tuple[float, ...] = (0.5, 0.5, 0.5)
 
     @model_validator(mode="after")
     def _check_splits(self) -> Self:
@@ -80,23 +82,6 @@ class DataConfig(FrozenModel):
             raise ValueError("val_fraction + test_fraction must be strictly below 1.0")
         return self
 
-    @model_validator(mode="after")
-    def _check_normalization(self) -> Self:
-        """Ensure the normalization statistics match the channel count.
-
-        Returns:
-            Self: The validated configuration instance.
-
-        Raises:
-            ValueError: If the tuples are misaligned or a standard deviation is
-                not strictly positive.
-        """
-        if len(self.mean) != self.channels or len(self.std) != self.channels:
-            raise ValueError("mean and std must provide exactly one value per channel")
-        if any(value <= 0.0 for value in self.std):
-            raise ValueError("every std value must be strictly positive")
-        return self
-
 
 class ModelConfig(FrozenModel):
     """Architecture configuration for the hybrid convolutional autoencoder.
@@ -104,38 +89,60 @@ class ModelConfig(FrozenModel):
     Args:
         input_size (int): Square input edge length. The encoder halves the
             spatial extent once per stage.
+        in_channels (int): Number of input spectral channels in ``(B, C, H, W)``.
         latent_dim (int): Bottleneck dimensionality of ``z``.
-        base_channels (int): Width of the first convolutional block. Each stage
-            doubles it.
+        base_channels (int): Width before the first doubling. Encoder stage
+            widths are ``base_channels * 2 ** (index + 1)``, so the default 32
+            yields ``64, 128, 256, 512`` and a 512-channel bottleneck at 4x4,
+            matching the fixed reconstruction contract.
         downsample_stages (int): Number of stride-2 encoder stages and matching
             transposed-convolution decoder stages.
         num_classes (int): Number of classification logits.
+        head_hidden (int): Width of the hidden classification projection. This
+            layer is the ASVD target, so its size is configuration, not a
+            literal buried in code.
         dropout (float): Dropout probability in the classification head.
         recon_alpha (float): Weight of the MSE term inside the reconstruction
             loss; ``1 - recon_alpha`` weights the SSIM term.
-        recon_lambda (float): Reconstrution loss weight relative to the
+        recon_lambda (float): Initial reconstruction loss weight relative to the
             cross-entropy term.
+        recon_lambda_final (float): Terminal reconstruction weight reached by the
+            linear decay schedule. Must not exceed ``recon_lambda`` and must stay
+            inside the assignment band ``[0.1, 0.5]``.
         kernel_size (int): Convolution kernel size for the projection layers.
         output_activation (Literal["sigmoid"]): Terminal decoder activation.
             The decoder must remain sigmoid-bounded because targets are scaled
             to ``[0, 1]``.
+        ssim_window (int): Odd SSIM window size. Must not exceed ``input_size``.
+        ssim_sigma (float): Standard deviation of the SSIM Gaussian window.
+        ssim_boundary (Literal["valid", "zero", "masked"]): Boundary policy for
+            the SSIM loss. ``valid`` crops the map, ``zero`` pads with zeros, and
+            ``masked`` normalizes local statistics by the real weight mass so
+            coverage stays complete without synthetic pixels.
 
     Raises:
         ValueError: If the spatial extent is not divisible by the number of
-            downsampling stages, or if the classification head cannot produce
-            one logit per class.
+            downsampling stages, if the SSIM window is even or larger than the
+            input, or if the classification head cannot produce one logit per
+            class.
     """
 
     input_size: int = Field(default=64, ge=16, le=512)
+    in_channels: int = Field(default=3, ge=1, le=13)
     latent_dim: int = Field(default=128, ge=8, le=4096)
     base_channels: int = Field(default=32, ge=4, le=512)
     downsample_stages: int = Field(default=4, ge=1, le=6)
     num_classes: int = Field(default=10, ge=2)
+    head_hidden: int = Field(default=64, ge=8, le=512)
     dropout: float = Field(default=0.3, ge=0.0, lt=1.0)
     recon_alpha: float = Field(default=0.85, ge=0.0, le=1.0)
     recon_lambda: float = Field(default=0.3, ge=0.1, le=0.5)
+    recon_lambda_final: float = Field(default=0.1, ge=0.1, le=0.5)
     kernel_size: int = Field(default=3, ge=1, le=7)
     output_activation: Literal["sigmoid"] = "sigmoid"
+    ssim_window: int = Field(default=11, ge=3, le=31)
+    ssim_sigma: float = Field(default=1.5, gt=0.0)
+    ssim_boundary: Literal["valid", "zero", "masked"] = "masked"
 
     @model_validator(mode="after")
     def _check_spatial_symmetry(self) -> Self:
@@ -152,6 +159,37 @@ class ModelConfig(FrozenModel):
             raise ValueError(
                 f"input_size={self.input_size} must be divisible by 2**{self.downsample_stages}"
             )
+        return self
+
+    @model_validator(mode="after")
+    def _check_ssim_window(self) -> Self:
+        """Validate the SSIM window against the patch geometry.
+
+        Returns:
+            Self: The validated configuration instance.
+
+        Raises:
+            ValueError: If the window is even or larger than the input patch.
+        """
+        if self.ssim_window % 2 == 0:
+            raise ValueError("ssim_window must be odd so the window has a center pixel")
+        if self.ssim_window > self.input_size:
+            raise ValueError("ssim_window must not exceed input_size")
+        return self
+
+    @model_validator(mode="after")
+    def _check_lambda_schedule(self) -> Self:
+        """Validate the reconstruction-weight decay envelope.
+
+        Returns:
+            Self: The validated configuration instance.
+
+        Raises:
+            ValueError: If the terminal weight exceeds the initial weight, which
+                would turn the scheduled decay into an unscheduled increase.
+        """
+        if self.recon_lambda_final > self.recon_lambda:
+            raise ValueError("recon_lambda_final must not exceed recon_lambda")
         return self
 
 
@@ -171,6 +209,18 @@ class TrainConfig(FrozenModel):
         devices (int): Number of accelerator devices.
         seed (int): Global seed applied to Python, NumPy, and Torch.
         fast_dev_run (bool): Run a single batch for smoke testing.
+        class_weights (bool): Weight the cross-entropy term by inverse class
+            frequency from the training split. Off by default so every ablation
+            arm shares the same objective; report macro-F1 either way.
+        checkpoint_dir (Path): Directory for Lightning checkpoints.
+        report_dir (Path): Directory for per-run metrics JSON, one subdirectory
+            per training mode.
+        mlflow_experiment (str): MLflow experiment name.
+        mlflow_enabled (bool): Whether to attempt MLflow tracking. An
+            unreachable tracker disables itself without aborting training.
+        job_metrics_enabled (bool): Whether to push job details to the
+            Prometheus Pushgateway. An unreachable gateway disables reporting
+            without aborting training.
 
     Raises:
         ValueError: If the warmup does not fit inside the epoch budget.
@@ -186,6 +236,12 @@ class TrainConfig(FrozenModel):
     devices: int = Field(default=1, ge=1)
     seed: int = Field(default=42, ge=0)
     fast_dev_run: bool = False
+    class_weights: bool = False
+    checkpoint_dir: Path = Path("checkpoints")
+    report_dir: Path = Path("reports/training")
+    mlflow_experiment: str = Field(default="eos-autoencoder", min_length=1)
+    mlflow_enabled: bool = True
+    job_metrics_enabled: bool = True
 
     @model_validator(mode="after")
     def _check_warmup(self) -> Self:
@@ -211,14 +267,29 @@ class ASVDConfig(FrozenModel):
         min_rank (int): Lowest admissible truncation rank.
         skip_last_layer (Literal[True]): The final classifier projection must
             never be factorized because its logits are calibrated.
-        min_compression_gain (float): Only factorize a layer of shape ``(m, n)``
-            when ``k * (m + n) < m * n``.
+        min_compression_gain (float): Required multiplicative parameter
+            reduction for a layer of shape ``(m, n)``: factorization is applied
+            only when ``m * n / (k * (m + n)) >= min_compression_gain``.
+        scope (Literal["classifier", "bottleneck", "all_intermediate"]):
+            Eligible layer set. ``classifier`` restricts factorization to the
+            hidden projection of the classification head, ``bottleneck`` targets
+            the encoder and decoder projections around ``z``, and
+            ``all_intermediate`` covers both. The final logits layer is never
+            eligible regardless of scope.
+
+    Note:
+        The hidden classifier projection is ``64 x 128``, so its largest
+        admissible rank under the compression-gain guard is 42 and the best
+        case saving is below two percent of that layer. The bottleneck
+        projections are therefore the scientifically meaningful target; the
+        classifier-only result is retained as a documented negative control.
     """
 
     preserve_energy: float = Field(default=0.95, ge=0.90, le=0.95)
     min_rank: int = Field(default=1, ge=1)
     skip_last_layer: Literal[True] = True
-    min_compression_gain: float = Field(default=1.0, ge=1.0)
+    min_compression_gain: float = Field(default=1.1, ge=1.0)
+    scope: Literal["classifier", "bottleneck", "all_intermediate"] = "bottleneck"
 
 
 class MMDConfig(FrozenModel):
@@ -277,6 +348,102 @@ class TelemetryConfig(FrozenModel):
     prometheus_url: str = "http://localhost:9090"
 
 
+class RetryConfig(FrozenModel):
+    """Retry and timeout policy for remote dataset acquisition.
+
+    Args:
+        attempts (int): Maximum number of attempts for a retryable operation.
+        base_delay_seconds (float): Initial exponential-backoff delay.
+        max_delay_seconds (float): Upper bound for the backoff delay.
+        timeout_seconds (float): Per-request network timeout.
+
+    Raises:
+        ValueError: If the maximum delay is smaller than the base delay.
+    """
+
+    attempts: int = Field(default=5, ge=1, le=20)
+    base_delay_seconds: float = Field(default=1.0, gt=0.0)
+    max_delay_seconds: float = Field(default=30.0, gt=0.0)
+    timeout_seconds: float = Field(default=60.0, gt=0.0)
+
+    @model_validator(mode="after")
+    def _check_delays(self) -> Self:
+        """Ensure the backoff envelope is ordered correctly.
+
+        Returns:
+            Self: The validated retry configuration.
+
+        Raises:
+            ValueError: If the maximum delay is below the base delay.
+        """
+        if self.max_delay_seconds < self.base_delay_seconds:
+            raise ValueError(
+                "max_delay_seconds must be greater than or equal to base_delay_seconds"
+            )
+        return self
+
+
+class StorageConfig(FrozenModel):
+    """Local-first storage policy with an optional S3 mirror.
+
+    Args:
+        mode (Literal["local", "hybrid"]): Local-only or local-plus-S3 mode.
+        s3_bucket (str | None): Bucket name required for hybrid mode.
+        s3_prefix (str): Key prefix beneath the bucket.
+        region (str | None): AWS region override.
+        verify_checksums (bool): Whether remote writes and reads are verified.
+
+    Raises:
+        ValueError: If hybrid mode has no bucket or the prefix has edge slashes.
+    """
+
+    mode: Literal["local", "hybrid"] = "local"
+    s3_bucket: str | None = Field(default=None, min_length=3, max_length=63)
+    s3_prefix: str = Field(default="eos/datasets/eurosat-rgb", min_length=1)
+    region: str | None = None
+    verify_checksums: bool = True
+
+    @model_validator(mode="after")
+    def _check_storage(self) -> Self:
+        """Validate the storage mode and S3 key prefix.
+
+        Returns:
+            Self: The validated storage configuration.
+
+        Raises:
+            ValueError: If hybrid mode lacks a bucket or the prefix is malformed.
+        """
+        if self.mode == "hybrid" and not self.s3_bucket:
+            raise ValueError("s3_bucket is required when storage mode is hybrid")
+        if self.s3_prefix.startswith("/") or self.s3_prefix.endswith("/"):
+            raise ValueError("s3_prefix must not start or end with '/'")
+        return self
+
+
+class PipelineConfig(FrozenModel):
+    """Paths and operational policy for the data engineering pipeline.
+
+    Args:
+        contract_path (Path): Dataset contract validated before every build.
+        raw_root (Path): Root for immutable source artifacts.
+        processed_root (Path): Root for versioned curated artifacts.
+        manifest_root (Path): Root for committed manifest evidence.
+        quarantine_root (Path): Root for rejected files and reasons.
+        run_root (Path): Root for per-run logs and temporary evidence.
+        retry (RetryConfig): Remote acquisition retry policy.
+        storage (StorageConfig): Local-first storage and S3 policy.
+    """
+
+    contract_path: Path = Path("data/contracts/eurosat-rgb.contract.yaml")
+    raw_root: Path = Path("data/raw")
+    processed_root: Path = Path("data/processed")
+    manifest_root: Path = Path("data/manifests")
+    quarantine_root: Path = Path("data/quarantine")
+    run_root: Path = Path("data/runs")
+    retry: RetryConfig = Field(default_factory=RetryConfig)
+    storage: StorageConfig = Field(default_factory=StorageConfig)
+
+
 class ExperimentConfig(FrozenModel):
     """Aggregate configuration for a single experiment run.
 
@@ -287,6 +454,7 @@ class ExperimentConfig(FrozenModel):
         asvd (ASVDConfig): Compression settings.
         mmd (MMDConfig): Drift telemetry settings.
         telemetry (TelemetryConfig): Metrics service endpoints.
+        pipeline (PipelineConfig): Data engineering paths and storage policy.
     """
 
     data: DataConfig = Field(default_factory=DataConfig)
@@ -295,6 +463,7 @@ class ExperimentConfig(FrozenModel):
     asvd: ASVDConfig = Field(default_factory=ASVDConfig)
     mmd: MMDConfig = Field(default_factory=MMDConfig)
     telemetry: TelemetryConfig = Field(default_factory=TelemetryConfig)
+    pipeline: PipelineConfig = Field(default_factory=PipelineConfig)
 
 
 class ServiceSettings(BaseSettings):
@@ -309,6 +478,10 @@ class ServiceSettings(BaseSettings):
         minio_secret_key (SecretStr | None): MinIO secret key.
         grafana_admin_user (str): Grafana administrator login.
         grafana_admin_password (SecretStr | None): Grafana administrator password.
+        eos_storage_mode (str | None): Optional local or hybrid override.
+        eos_s3_bucket (str | None): Optional S3 bucket override.
+        eos_s3_prefix (str | None): Optional S3 key-prefix override.
+        eos_s3_region (str | None): Optional AWS region override.
     """
 
     model_config = SettingsConfigDict(
@@ -318,7 +491,7 @@ class ServiceSettings(BaseSettings):
         case_sensitive=False,
     )
 
-    mlflow_tracking_uri: str = "http://localhost:5000"
+    mlflow_tracking_uri: str = "http://localhost:5001"
     pushgateway_url: str = "http://localhost:9091"
     prometheus_url: str = "http://localhost:9090"
     minio_endpoint: str = "http://localhost:9000"
@@ -326,6 +499,10 @@ class ServiceSettings(BaseSettings):
     minio_secret_key: SecretStr | None = None
     grafana_admin_user: str = "admin"
     grafana_admin_password: SecretStr | None = None
+    eos_storage_mode: str | None = None
+    eos_s3_bucket: str | None = None
+    eos_s3_prefix: str | None = None
+    eos_s3_region: str | None = None
 
 
 def load_config(path: Path) -> ExperimentConfig:

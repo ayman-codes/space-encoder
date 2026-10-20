@@ -1,0 +1,39 @@
+dataset: eurosat-rgb
+version: 1.0.0
+source:
+  urls:
+    - https://zenodo.org/records/7711810/files/EuroSAT_RGB.zip
+  archive_sha256: b4f5b234ecb7d7ff9c6cddb046543b4717c53fd6e9815be6c0e80cc614f51b90
+  archive_bytes: 94658721
+  expected_images: 27000
+  expected_classes: 10
+  image_size: 64
+  channels: 3
+  class_names:
+    - AnnualCrop
+    - Forest
+    - HerbaceousVegetation
+    - Highway
+    - Industrial
+    - Pasture
+    - PermanentCrop
+    - Residential
+    - River
+    - SeaLake
+  license: See the Zenodo record 7711810 for the dataset license.
+  citation: >-
+    Helber et al. (2019), EuroSAT: A Novel Dataset and Deep Learning Benchmark
+    for Land Use and Land Cover Classification, IEEE JSTARS.
+split:
+  train_fraction: 0.70
+  val_fraction: 0.15
+  test_fraction: 0.15
+  seed: 42
+  group_aware: true
+  phash_distance: 6
+validation:
+  max_corrupt_images: 0
+  max_exact_duplicates: 0
+  max_cross_class_duplicate_groups: 25
+  warn_near_duplicate_fraction: 0.02
+  min_image_variance: 0.0001

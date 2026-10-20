@@ -1,0 +1,38 @@
+{
+  "test": {
+    "AnnualCrop": 450,
+    "Forest": 450,
+    "HerbaceousVegetation": 450,
+    "Highway": 375,
+    "Industrial": 375,
+    "Pasture": 300,
+    "PermanentCrop": 375,
+    "Residential": 450,
+    "River": 375,
+    "SeaLake": 450
+  },
+  "train": {
+    "AnnualCrop": 2100,
+    "Forest": 2100,
+    "HerbaceousVegetation": 2100,
+    "Highway": 1750,
+    "Industrial": 1750,
+    "Pasture": 1400,
+    "PermanentCrop": 1750,
+    "Residential": 2100,
+    "River": 1750,
+    "SeaLake": 2100
+  },
+  "val": {
+    "AnnualCrop": 450,
+    "Forest": 450,
+    "HerbaceousVegetation": 450,
+    "Highway": 375,
+    "Industrial": 375,
+    "Pasture": 300,
+    "PermanentCrop": 375,
+    "Residential": 450,
+    "River": 375,
+    "SeaLake": 450
+  }
+}

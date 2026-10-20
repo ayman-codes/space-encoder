@@ -1,0 +1,53 @@
+stages:
+  fetch:
+    cmd: uv run eos-data fetch
+    deps:
+      - src/eos/dataset/ingest.py
+      - data/contracts/eurosat-rgb.contract.yaml
+    params:
+      - configs/base.yaml:
+          - pipeline
+    outs:
+      - data/raw/EuroSAT_RGB.zip
+  extract:
+    cmd: uv run eos-data extract
+    deps:
+      - data/raw/EuroSAT_RGB.zip
+      - src/eos/dataset/ingest.py
+      - data/contracts/eurosat-rgb.contract.yaml
+    outs:
+      - data/raw/eurosat:
+          cache: false
+  validate:
+    cmd: uv run eos-data validate
+    deps:
+      - data/raw/eurosat
+      - data/contracts/eurosat-rgb.contract.yaml
+      - src/eos/dataset/validate.py
+      - src/eos/dataset/duplicates.py
+      - src/eos/dataset/manifest.py
+    outs:
+      - data/processed/eurosat-rgb-v1.0.0/base_manifest.parquet
+  split:
+    cmd: uv run eos-data split
+    deps:
+      - data/processed/eurosat-rgb-v1.0.0/base_manifest.parquet
+      - data/contracts/eurosat-rgb.contract.yaml
+      - src/eos/dataset/splits.py
+      - src/eos/dataset/manifest.py
+    outs:
+      - data/processed/eurosat-rgb-v1.0.0/manifest.parquet
+  curate:
+    cmd: uv run eos-data curate
+    deps:
+      - data/processed/eurosat-rgb-v1.0.0/manifest.parquet
+      - data/raw/eurosat
+      - data/contracts/eurosat-rgb.contract.yaml
+      - src/eos/dataset/curate.py
+    outs:
+      - data/processed/eurosat-rgb-v1.0.0/images_uint8.npy
+      - data/processed/eurosat-rgb-v1.0.0/labels_int64.npy
+      - data/processed/eurosat-rgb-v1.0.0/train_indices.npy
+      - data/processed/eurosat-rgb-v1.0.0/val_indices.npy
+      - data/processed/eurosat-rgb-v1.0.0/test_indices.npy
+      - data/processed/eurosat-rgb-v1.0.0/stats.json

@@ -1,0 +1,488 @@
+{
+  "checks": [
+    {
+      "detail": "C:\\Code\\space encoder\\data\\raw\\EuroSAT_RGB.zip",
+      "name": "archive.exists",
+      "passed": true,
+      "severity": "critical"
+    },
+    {
+      "detail": "expected 94658721, found 94658721",
+      "name": "archive.bytes",
+      "passed": true,
+      "severity": "critical"
+    },
+    {
+      "detail": "expected b4f5b234ecb7d7ff9c6cddb046543b4717c53fd6e9815be6c0e80cc614f51b90, found b4f5b234ecb7d7ff9c6cddb046543b4717c53fd6e9815be6c0e80cc614f51b90",
+      "name": "archive.sha256",
+      "passed": true,
+      "severity": "critical"
+    },
+    {
+      "detail": "all members pass CRC",
+      "name": "archive.crc",
+      "passed": true,
+      "severity": "critical"
+    },
+    {
+      "detail": "paths are relative",
+      "name": "archive.paths",
+      "passed": true,
+      "severity": "critical"
+    },
+    {
+      "detail": "expected 27000, found 27000",
+      "name": "archive.image_count",
+      "passed": true,
+      "severity": "critical"
+    },
+    {
+      "detail": "missing=[], extra=[]",
+      "name": "archive.classes",
+      "passed": true,
+      "severity": "critical"
+    },
+    {
+      "detail": "0 rejected images",
+      "name": "images.corrupt",
+      "passed": true,
+      "severity": "critical"
+    },
+    {
+      "detail": "0 extra exact duplicates",
+      "name": "duplicates.exact",
+      "passed": true,
+      "severity": "critical"
+    },
+    {
+      "detail": "18 cross-class groups",
+      "name": "duplicates.cross_class",
+      "passed": true,
+      "severity": "warning"
+    },
+    {
+      "detail": "0.0035 of files in perceptual groups",
+      "name": "duplicates.fraction",
+      "passed": true,
+      "severity": "warning"
+    }
+  ],
+  "contract_fingerprint": "4e55166224b7b3c0b22c189d027fbaa16cb8461a828f4183a7500c1f2e760bfe",
+  "created_at": "2026-10-18T13:34:52+00:00",
+  "dataset_version": "eurosat-rgb-v1.0.0",
+  "duplicate_report": {
+    "cross_class_groups": 18,
+    "exact_duplicate_extra_files": 0,
+    "exact_duplicate_groups": 0,
+    "groups": [
+      {
+        "class_names": [
+          "AnnualCrop",
+          "Forest",
+          "Pasture",
+          "River",
+          "SeaLake"
+        ],
+        "group_id": "g000130",
+        "image_ids": [
+          "AnnualCrop/AnnualCrop_1114",
+          "Forest/Forest_1552",
+          "Forest/Forest_1738",
+          "Forest/Forest_1757",
+          "Forest/Forest_2917",
+          "Pasture/Pasture_249",
+          "River/River_1476",
+          "SeaLake/SeaLake_1039",
+          "SeaLake/SeaLake_1398",
+          "SeaLake/SeaLake_1593",
+          "SeaLake/SeaLake_1908",
+          "SeaLake/SeaLake_2156",
+          "SeaLake/SeaLake_2174",
+          "SeaLake/SeaLake_2323",
+          "SeaLake/SeaLake_2892",
+          "SeaLake/SeaLake_3",
+          "SeaLake/SeaLake_681",
+          "SeaLake/SeaLake_754"
+        ]
+      },
+      {
+        "class_names": [
+          "AnnualCrop",
+          "Forest",
+          "Residential",
+          "River",
+          "SeaLake"
+        ],
+        "group_id": "g000184",
+        "image_ids": [
+          "AnnualCrop/AnnualCrop_1163",
+          "Forest/Forest_2247",
+          "Forest/Forest_2949",
+          "Forest/Forest_757",
+          "Residential/Residential_1035",
+          "Residential/Residential_415",
+          "River/River_1108",
+          "SeaLake/SeaLake_1166",
+          "SeaLake/SeaLake_1511",
+          "SeaLake/SeaLake_1812",
+          "SeaLake/SeaLake_2149",
+          "SeaLake/SeaLake_2212",
+          "SeaLake/SeaLake_2266",
+          "SeaLake/SeaLake_2539",
+          "SeaLake/SeaLake_2825",
+          "SeaLake/SeaLake_2846",
+          "SeaLake/SeaLake_414",
+          "SeaLake/SeaLake_659",
+          "SeaLake/SeaLake_674",
+          "SeaLake/SeaLake_787",
+          "SeaLake/SeaLake_861"
+        ]
+      },
+      {
+        "class_names": [
+          "AnnualCrop",
+          "Forest",
+          "Pasture",
+          "SeaLake"
+        ],
+        "group_id": "g001740",
+        "image_ids": [
+          "AnnualCrop/AnnualCrop_2564",
+          "Forest/Forest_1839",
+          "Forest/Forest_502",
+          "Pasture/Pasture_596",
+          "SeaLake/SeaLake_1284",
+          "SeaLake/SeaLake_1597",
+          "SeaLake/SeaLake_1714",
+          "SeaLake/SeaLake_2140",
+          "SeaLake/SeaLake_2282",
+          "SeaLake/SeaLake_2347",
+          "SeaLake/SeaLake_2599",
+          "SeaLake/SeaLake_2638",
+          "SeaLake/SeaLake_2833",
+          "SeaLake/SeaLake_330",
+          "SeaLake/SeaLake_867"
+        ]
+      },
+      {
+        "class_names": [
+          "Forest"
+        ],
+        "group_id": "g003426",
+        "image_ids": [
+          "Forest/Forest_1381",
+          "Forest/Forest_1616",
+          "Forest/Forest_2103"
+        ]
+      },
+      {
+        "class_names": [
+          "Forest",
+          "SeaLake"
+        ],
+        "group_id": "g003732",
+        "image_ids": [
+          "Forest/Forest_1659",
+          "SeaLake/SeaLake_2011"
+        ]
+      },
+      {
+        "class_names": [
+          "Forest",
+          "SeaLake"
+        ],
+        "group_id": "g003911",
+        "image_ids": [
+          "Forest/Forest_1821",
+          "SeaLake/SeaLake_2037"
+        ]
+      },
+      {
+        "class_names": [
+          "Forest",
+          "SeaLake"
+        ],
+        "group_id": "g004320",
+        "image_ids": [
+          "Forest/Forest_2191",
+          "SeaLake/SeaLake_1494"
+        ]
+      },
+      {
+        "class_names": [
+          "Forest",
+          "SeaLake"
+        ],
+        "group_id": "g004376",
+        "image_ids": [
+          "Forest/Forest_2241",
+          "SeaLake/SeaLake_491"
+        ]
+      },
+      {
+        "class_names": [
+          "Forest",
+          "SeaLake"
+        ],
+        "group_id": "g004588",
+        "image_ids": [
+          "Forest/Forest_2433",
+          "SeaLake/SeaLake_1666",
+          "SeaLake/SeaLake_2616"
+        ]
+      },
+      {
+        "class_names": [
+          "Forest",
+          "SeaLake"
+        ],
+        "group_id": "g004641",
+        "image_ids": [
+          "Forest/Forest_2481",
+          "SeaLake/SeaLake_219"
+        ]
+      },
+      {
+        "class_names": [
+          "Forest",
+          "PermanentCrop",
+          "River",
+          "SeaLake"
+        ],
+        "group_id": "g004850",
+        "image_ids": [
+          "Forest/Forest_267",
+          "PermanentCrop/PermanentCrop_1601",
+          "River/River_2109",
+          "River/River_835",
+          "SeaLake/SeaLake_592",
+          "SeaLake/SeaLake_596",
+          "SeaLake/SeaLake_678"
+        ]
+      },
+      {
+        "class_names": [
+          "Forest",
+          "SeaLake"
+        ],
+        "group_id": "g004941",
+        "image_ids": [
+          "Forest/Forest_2751",
+          "SeaLake/SeaLake_1403",
+          "SeaLake/SeaLake_894"
+        ]
+      },
+      {
+        "class_names": [
+          "Forest",
+          "Pasture"
+        ],
+        "group_id": "g004948",
+        "image_ids": [
+          "Forest/Forest_2758",
+          "Pasture/Pasture_1183"
+        ]
+      },
+      {
+        "class_names": [
+          "Forest",
+          "SeaLake"
+        ],
+        "group_id": "g005539",
+        "image_ids": [
+          "Forest/Forest_592",
+          "SeaLake/SeaLake_836"
+        ]
+      },
+      {
+        "class_names": [
+          "Forest",
+          "Pasture",
+          "SeaLake"
+        ],
+        "group_id": "g005724",
+        "image_ids": [
+          "Forest/Forest_76",
+          "Pasture/Pasture_1053",
+          "SeaLake/SeaLake_486"
+        ]
+      },
+      {
+        "class_names": [
+          "Highway",
+          "Pasture",
+          "SeaLake"
+        ],
+        "group_id": "g010329",
+        "image_ids": [
+          "Highway/Highway_2203",
+          "Pasture/Pasture_459",
+          "SeaLake/SeaLake_1335",
+          "SeaLake/SeaLake_1610",
+          "SeaLake/SeaLake_58",
+          "SeaLake/SeaLake_880"
+        ]
+      },
+      {
+        "class_names": [
+          "Highway"
+        ],
+        "group_id": "g010704",
+        "image_ids": [
+          "Highway/Highway_291",
+          "Highway/Highway_513"
+        ]
+      },
+      {
+        "class_names": [
+          "Pasture",
+          "SeaLake"
+        ],
+        "group_id": "g014994",
+        "image_ids": [
+          "Pasture/Pasture_1905",
+          "SeaLake/SeaLake_2955"
+        ]
+      },
+      {
+        "class_names": [
+          "Residential",
+          "SeaLake"
+        ],
+        "group_id": "g019584",
+        "image_ids": [
+          "Residential/Residential_1991",
+          "SeaLake/SeaLake_879"
+        ]
+      },
+      {
+        "class_names": [
+          "River"
+        ],
+        "group_id": "g021604",
+        "image_ids": [
+          "River/River_111",
+          "River/River_1680"
+        ]
+      },
+      {
+        "class_names": [
+          "River"
+        ],
+        "group_id": "g022957",
+        "image_ids": [
+          "River/River_2330",
+          "River/River_676"
+        ]
+      },
+      {
+        "class_names": [
+          "River",
+          "SeaLake"
+        ],
+        "group_id": "g023402",
+        "image_ids": [
+          "River/River_481",
+          "SeaLake/SeaLake_2890"
+        ]
+      },
+      {
+        "class_names": [
+          "River"
+        ],
+        "group_id": "g023414",
+        "image_ids": [
+          "River/River_492",
+          "River/River_597"
+        ]
+      },
+      {
+        "class_names": [
+          "SeaLake"
+        ],
+        "group_id": "g024001",
+        "image_ids": [
+          "SeaLake/SeaLake_1022",
+          "SeaLake/SeaLake_1652"
+        ]
+      },
+      {
+        "class_names": [
+          "SeaLake"
+        ],
+        "group_id": "g024236",
+        "image_ids": [
+          "SeaLake/SeaLake_1236",
+          "SeaLake/SeaLake_1296"
+        ]
+      },
+      {
+        "class_names": [
+          "SeaLake"
+        ],
+        "group_id": "g024591",
+        "image_ids": [
+          "SeaLake/SeaLake_1562",
+          "SeaLake/SeaLake_1920",
+          "SeaLake/SeaLake_587",
+          "SeaLake/SeaLake_92"
+        ]
+      },
+      {
+        "class_names": [
+          "SeaLake"
+        ],
+        "group_id": "g024980",
+        "image_ids": [
+          "SeaLake/SeaLake_192",
+          "SeaLake/SeaLake_2499"
+        ]
+      },
+      {
+        "class_names": [
+          "SeaLake"
+        ],
+        "group_id": "g025047",
+        "image_ids": [
+          "SeaLake/SeaLake_1981",
+          "SeaLake/SeaLake_794"
+        ]
+      },
+      {
+        "class_names": [
+          "SeaLake"
+        ],
+        "group_id": "g025088",
+        "image_ids": [
+          "SeaLake/SeaLake_2018",
+          "SeaLake/SeaLake_427"
+        ]
+      },
+      {
+        "class_names": [
+          "SeaLake"
+        ],
+        "group_id": "g025276",
+        "image_ids": [
+          "SeaLake/SeaLake_2193",
+          "SeaLake/SeaLake_2776"
+        ]
+      },
+      {
+        "class_names": [
+          "SeaLake"
+        ],
+        "group_id": "g026478",
+        "image_ids": [
+          "SeaLake/SeaLake_6",
+          "SeaLake/SeaLake_929"
+        ]
+      }
+    ],
+    "near_duplicate_extra_files": 94,
+    "near_duplicate_groups": 31
+  },
+  "quarantined": [],
+  "run_id": "20261018T133452Z",
+  "status": "passed"
+}

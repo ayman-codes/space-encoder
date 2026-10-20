@@ -3,25 +3,314 @@
   "title": "EOS Training",
   "schemaVersion": 39,
   "refresh": "30s",
-  "time": { "from": "now-7d", "to": "now" },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
   "panels": [
     {
       "id": 1,
-      "type": "timeseries",
-      "title": "Validation macro F1",
-      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "type": "stat",
+      "title": "Runs reported",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
       "targets": [
-        { "expr": "eos_val_macro_f1", "legendFormat": "{{job}}" }
-      ]
+        {
+          "refId": "A",
+          "expr": "count(eos_train_run_info)",
+          "instant": true
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "blue" } },
+        "overrides": []
+      }
     },
     {
       "id": 2,
-      "type": "timeseries",
-      "title": "Reconstruction MSE",
-      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "type": "stat",
+      "title": "Last run wall time",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
       "targets": [
-        { "expr": "eos_recon_mse", "legendFormat": "{{job}}" }
-      ]
+        {
+          "refId": "A",
+          "expr": "eos_train_duration_seconds",
+          "instant": true,
+          "legendFormat": "{{run}}"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "decimals": 1, "color": { "mode": "fixed", "fixedColor": "purple" } },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Last run GPU fit time",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "eos_train_fit_seconds",
+          "instant": true,
+          "legendFormat": "{{run}}"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "decimals": 1, "color": { "mode": "fixed", "fixedColor": "orange" } },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Last run test macro-F1",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "eos_train_test_macro_f1",
+          "instant": true,
+          "legendFormat": "{{run}}"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "percentunit", "decimals": 3, "color": { "mode": "fixed", "fixedColor": "green" } },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "bargauge",
+      "title": "Wall time per run",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "eos_train_duration_seconds",
+          "instant": true,
+          "legendFormat": "{{run}}"
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "valueMode": "color",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showUnfilled": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 1,
+          "color": { "mode": "continuous-BlPu" },
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "type": "bargauge",
+      "title": "GPU fit time per run",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "eos_train_fit_seconds",
+          "instant": true,
+          "legendFormat": "{{run}}"
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "valueMode": "color",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showUnfilled": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 1,
+          "color": { "mode": "continuous-Oranges" },
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Macro-F1 per run",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "eos_train_val_macro_f1",
+          "legendFormat": "{{run}} val"
+        },
+        {
+          "refId": "B",
+          "expr": "eos_train_test_macro_f1",
+          "legendFormat": "{{run}} test"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 3,
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "points",
+            "pointSize": 8,
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "always"
+          },
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Reconstruction MSE per run",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "eos_train_val_recon_mse",
+          "legendFormat": "{{run}} val"
+        },
+        {
+          "refId": "B",
+          "expr": "eos_train_test_recon_mse",
+          "legendFormat": "{{run}} test"
+        }
+      ],
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull"] },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 4,
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "points",
+            "pointSize": 8,
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "always"
+          },
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Run details",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 22 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "eos_train_run_info",
+          "instant": true,
+          "format": "table",
+          "legendFormat": ""
+        },
+        {
+          "refId": "B",
+          "expr": "eos_train_duration_seconds",
+          "instant": true,
+          "format": "table",
+          "legendFormat": ""
+        },
+        {
+          "refId": "C",
+          "expr": "eos_train_fit_seconds",
+          "instant": true,
+          "format": "table",
+          "legendFormat": ""
+        },
+        {
+          "refId": "D",
+          "expr": "eos_train_test_macro_f1",
+          "instant": true,
+          "format": "table",
+          "legendFormat": ""
+        },
+        {
+          "refId": "E",
+          "expr": "eos_train_parameter_count",
+          "instant": true,
+          "format": "table",
+          "legendFormat": ""
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "Time 1": true, "Time 2": true, "Time 3": true, "Time 4": true, "Time 5": true, "Value": true },
+            "renameByName": {
+              "Value 2": "wall s",
+              "Value 3": "fit s",
+              "Value 4": "test macro-F1",
+              "Value 5": "params",
+              "run": "run",
+              "mode": "mode",
+              "seed": "seed",
+              "status": "status"
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "auto", "displayMode": "auto" } },
+        "overrides": []
+      }
     }
   ]
 }

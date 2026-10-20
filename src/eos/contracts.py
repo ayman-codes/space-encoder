@@ -21,6 +21,7 @@ import yaml
 from pydantic import ValidationError
 
 from eos.config import ExperimentConfig
+from eos.dataset.contract import DatasetContract
 
 SKIP_DIRECTORIES = frozenset(
     {
@@ -280,6 +281,36 @@ def validate_configs(directory: Path) -> list[Violation]:
                     path=path.as_posix(),
                     line=1,
                     code="CFG001",
+                    message=str(error).replace("\n", " "),
+                )
+            )
+    return violations
+
+
+def validate_dataset_contracts(directory: Path) -> list[Violation]:
+    """Validate every YAML file against the dataset contract.
+
+    Args:
+        directory (Path): Directory containing dataset contract files.
+
+    Returns:
+        list[Violation]: One violation per invalid contract file.
+    """
+    if not directory.is_dir():
+        return []
+    violations: list[Violation] = []
+    for path in sorted(directory.glob("*.yaml")):
+        try:
+            payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+            if not isinstance(payload, dict):
+                raise ValueError("dataset contract root must be a mapping")
+            DatasetContract.model_validate(payload)
+        except (ValidationError, ValueError) as error:
+            violations.append(
+                Violation(
+                    path=path.as_posix(),
+                    line=1,
+                    code="CTR001",
                     message=str(error).replace("\n", " "),
                 )
             )

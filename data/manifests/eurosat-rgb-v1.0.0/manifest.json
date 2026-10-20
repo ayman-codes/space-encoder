@@ -1,0 +1,64 @@
+{
+  "class_counts": {
+    "AnnualCrop": 3000,
+    "Forest": 3000,
+    "HerbaceousVegetation": 3000,
+    "Highway": 2500,
+    "Industrial": 2500,
+    "Pasture": 2000,
+    "PermanentCrop": 2500,
+    "Residential": 3000,
+    "River": 2500,
+    "SeaLake": 3000
+  },
+  "contract_fingerprint": "4e55166224b7b3c0b22c189d027fbaa16cb8461a828f4183a7500c1f2e760bfe",
+  "created_at": "2026-10-18T13:29:44+00:00",
+  "dataset": "eurosat-rgb",
+  "dataset_version": "eurosat-rgb-v1.0.0",
+  "git_commit": "228bdd5",
+  "manifest_sha256": "f7ccc0bccafc3b9679c4ef2ac934e0df7d2710628119cf6171784561f9754570",
+  "pipeline_version": "0.1.0",
+  "run_id": "20261018T132944Z",
+  "source_archive_sha256": "b4f5b234ecb7d7ff9c6cddb046543b4717c53fd6e9815be6c0e80cc614f51b90",
+  "split_counts": {
+    "test": {
+      "AnnualCrop": 450,
+      "Forest": 450,
+      "HerbaceousVegetation": 450,
+      "Highway": 375,
+      "Industrial": 375,
+      "Pasture": 300,
+      "PermanentCrop": 375,
+      "Residential": 450,
+      "River": 375,
+      "SeaLake": 450
+    },
+    "train": {
+      "AnnualCrop": 2100,
+      "Forest": 2100,
+      "HerbaceousVegetation": 2100,
+      "Highway": 1750,
+      "Industrial": 1750,
+      "Pasture": 1400,
+      "PermanentCrop": 1750,
+      "Residential": 2100,
+      "River": 1750,
+      "SeaLake": 2100
+    },
+    "val": {
+      "AnnualCrop": 450,
+      "Forest": 450,
+      "HerbaceousVegetation": 450,
+      "Highway": 375,
+      "Industrial": 375,
+      "Pasture": 300,
+      "PermanentCrop": 375,
+      "Residential": 450,
+      "River": 375,
+      "SeaLake": 450
+    }
+  },
+  "split_seed": 42,
+  "split_strategy": "stratified_group",
+  "version": "1.0.0"
+}

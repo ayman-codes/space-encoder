@@ -1,0 +1,71 @@
+{
+  "checks": [
+    {
+      "detail": "expected 27000, found 27000",
+      "name": "manifest.image_count",
+      "passed": true,
+      "severity": "critical"
+    },
+    {
+      "detail": "0 duplicate identifiers",
+      "name": "manifest.image_ids_unique",
+      "passed": true,
+      "severity": "critical"
+    },
+    {
+      "detail": "0 duplicate paths",
+      "name": "manifest.paths_unique",
+      "passed": true,
+      "severity": "critical"
+    },
+    {
+      "detail": "missing=[], extra=[]",
+      "name": "manifest.classes",
+      "passed": true,
+      "severity": "critical"
+    },
+    {
+      "detail": "expected 64px RGB",
+      "name": "manifest.geometry",
+      "passed": true,
+      "severity": "critical"
+    },
+    {
+      "detail": "every record has a known split",
+      "name": "manifest.splits",
+      "passed": true,
+      "severity": "critical"
+    },
+    {
+      "detail": "0 groups span multiple splits",
+      "name": "manifest.group_isolation",
+      "passed": true,
+      "severity": "critical"
+    },
+    {
+      "detail": "train=0.7000, val=0.1500, test=0.1500",
+      "name": "manifest.split_ratios",
+      "passed": true,
+      "severity": "critical"
+    },
+    {
+      "detail": "within one image of target",
+      "name": "manifest.class_split_balance",
+      "passed": true,
+      "severity": "critical"
+    },
+    {
+      "detail": "(27000, 64, 64, 3) pixel range 0-255",
+      "name": "arrays.shape",
+      "passed": true,
+      "severity": "critical"
+    }
+  ],
+  "contract_fingerprint": "4e55166224b7b3c0b22c189d027fbaa16cb8461a828f4183a7500c1f2e760bfe",
+  "created_at": "2026-10-20T08:57:27+00:00",
+  "dataset_version": "eurosat-rgb-v1.0.0",
+  "duplicate_report": null,
+  "quarantined": [],
+  "run_id": "20261020T085727Z",
+  "status": "passed"
+}

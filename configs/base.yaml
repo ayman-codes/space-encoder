@@ -1,5 +1,6 @@
 data:
   root: data/raw/eurosat
+  curated_root: data/processed/eurosat-rgb-v1.0.0
   image_size: 64
   channels: 3
   num_classes: 10
@@ -8,20 +9,24 @@ data:
   val_fraction: 0.15
   test_fraction: 0.15
   seed: 42
-  mean: [0.5, 0.5, 0.5]
-  std: [0.5, 0.5, 0.5]
 
 model:
   input_size: 64
+  in_channels: 3
   latent_dim: 128
   base_channels: 32
   downsample_stages: 4
   num_classes: 10
+  head_hidden: 64
   dropout: 0.3
   recon_alpha: 0.85
   recon_lambda: 0.3
+  recon_lambda_final: 0.1
   kernel_size: 3
   output_activation: sigmoid
+  ssim_window: 11
+  ssim_sigma: 1.5
+  ssim_boundary: masked
 
 train:
   max_epochs: 30
@@ -34,12 +39,19 @@ train:
   devices: 1
   seed: 42
   fast_dev_run: false
+  class_weights: false
+  checkpoint_dir: checkpoints
+  report_dir: reports/training
+  mlflow_experiment: eos-autoencoder
+  mlflow_enabled: true
+  job_metrics_enabled: true
 
 asvd:
   preserve_energy: 0.95
   min_rank: 1
   skip_last_layer: true
-  min_compression_gain: 1.0
+  min_compression_gain: 1.1
+  scope: bottleneck
 
 mmd:
   bandwidth_multipliers: [0.25, 0.5, 1.0, 2.0, 4.0]
@@ -51,3 +63,22 @@ telemetry:
   service_name: eos-telemetry
   pushgateway_url: http://localhost:9091
   prometheus_url: http://localhost:9090
+
+pipeline:
+  contract_path: data/contracts/eurosat-rgb.contract.yaml
+  raw_root: data/raw
+  processed_root: data/processed
+  manifest_root: data/manifests
+  quarantine_root: data/quarantine
+  run_root: data/runs
+  retry:
+    attempts: 5
+    base_delay_seconds: 1.0
+    max_delay_seconds: 30.0
+    timeout_seconds: 60.0
+  storage:
+    mode: local
+    s3_bucket: null
+    s3_prefix: eos/datasets/eurosat-rgb
+    region: null
+    verify_checksums: true

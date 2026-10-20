@@ -5,7 +5,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from eos.contracts import scan_notebook, scan_source, scan_tree, validate_configs
+from eos.contracts import (
+    scan_notebook,
+    scan_source,
+    scan_tree,
+    validate_configs,
+    validate_dataset_contracts,
+)
 
 COMPLIANT_SOURCE = '''"""Module docstring."""
 
@@ -96,3 +102,11 @@ def test_scan_tree_skips_references() -> None:
     root = Path(__file__).resolve().parents[2]
     paths = {violation.path for violation in scan_tree(root)}
     assert not any("references" in path for path in paths)
+
+
+def test_dataset_contracts_validate(tmp_path: Path) -> None:
+    """A broken dataset contract must be reported by the contract gate."""
+    contract = tmp_path / "broken.yaml"
+    contract.write_text("dataset: broken\nversion: nope\n", encoding="utf-8")
+    violations = validate_dataset_contracts(tmp_path)
+    assert [violation.code for violation in violations] == ["CTR001"]
