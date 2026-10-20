@@ -17,11 +17,11 @@ $env:PYTHONUTF8 = "1"
 New-Item -ItemType Directory -Force -Path $env:TMPDIR | Out-Null
 
 if ($Fix) {
-    & uv run ruff format .
-    & uv run ruff check . --fix
+    & uv run ruff format src scripts tests notebooks
+    & uv run ruff check src scripts tests notebooks --fix
 } else {
-    & uv run ruff format --check .
-    & uv run ruff check .
+    & uv run ruff format --check src scripts tests notebooks
+    & uv run ruff check src scripts tests notebooks
 }
 
 if ($LASTEXITCODE -ne 0) { exit 1 }

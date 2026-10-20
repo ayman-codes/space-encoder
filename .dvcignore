@@ -1,0 +1,11 @@
+.cache
+.git
+.opencode
+.venv
+.mypy_cache
+.pytest_cache
+.ruff_cache
+references
+torchinductor_*
+data/quarantine
+data/runs

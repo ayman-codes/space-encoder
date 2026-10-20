@@ -1,42 +1,419 @@
 # EOS Autoencoder Engine
 
-Hybrid convolutional autoencoder for 64x64 Sentinel-2 (EuroSAT) patches.
+**Hybrid CNN-autoencoder for Sentinel-2 land-cover classification: spatial-spectral reconstruction regularization, multi-seed ablation evidence, ASVD compression, and RKHS latent-drift telemetry.**
 
-The engine couples a shared convolutional encoder with a land-cover
-classification head and a spatial reconstruction head, then applies adaptive
-singular value decomposition (ASVD) compression and RKHS maximum mean
-discrepancy (MMD) latent drift telemetry.
+<div align="center">
+
+![Python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
+![PyTorch](https://img.shields.io/badge/pytorch-2.14-EE4C2C?logo=pytorch&logoColor=white)
+![Lightning](https://img.shields.io/badge/lightning-2.6-792EE5?logo=lightning&logoColor=white)
+![ROCm](https://img.shields.io/badge/ROCm-10.1-ED1C24&logo=amd&logoColor=white)
+![Docker](https://img.shields.io/badge/docker--compose-2496ED?logo=docker&logoColor=white)
+![CI](https://img.shields.io/badge/ci-github%20actions-2088FF?logo=githubactions&logoColor=white)
+![Ruff](https://img.shields.io/badge/lint-ruff-261230?logo=ruff&logoColor=white)
+![mypy](https://img.shields.io/badge/types-mypy%20strict-2A6DB2)
+![pytest](https://img.shields.io/badge/tests-256%20passing-3fb950)
+![coverage](https://img.shields.io/badge/coverage-90.9%25-3fb950)
+![License](https://img.shields.io/badge/license-MIT-blue)
+
+</div>
+
+---
+
+## Overview
+
+This repository implements a **multi-task Hybrid Convolutional Autoencoder
+(Hybrid-CAE)** for 64 × 64 EuroSAT Sentinel-2 patches. One shared encoder
+produces a 128-dimensional bottleneck consumed by two heads:
+
+- a **10-class land-use / land-cover classifier** trained with cross-entropy;
+- a **symmetric decoder** trained to reconstruct the input, regularizing the
+  latent space with a composite MSE + SSIM objective.
+
+The research question is causal and budget-controlled: *does adding the
+reconstruction objective improve classification over a pure CNN at identical
+architecture, data, budget, and seed?* The answer this repository can currently
+defend is **directionally supported, not confirmed** — and the measured gain
+localizes to texture-discriminated cropland classes rather than to boundary
+topology (see [Findings](#experimental-findings)).
+
+Post-training, dense layers are compressed with **Adaptive SVD (ASVD)** rank
+truncation, and the latent distribution is monitored with a **Reproducing Kernel
+Hilbert Space Maximum Mean Discrepancy (MMD)** test against a calibrated
+validation baseline.
+
+```
+                          ┌────────────────────────────────────────┐
+                          │     Shared Convolutional Encoder       │
+                          │   64×64×3 ──► Strided Convs ──► z ∈ R¹²⁸│
+                          └───────────────────┬────────────────────┘
+                                              │
+                     ┌────────────────────────┴────────────────────────┐
+                     ▼                                                 ▼
+    ┌─────────────────────────────────┐               ┌─────────────────────────────────┐
+    │      Classification Head        │               │       Reconstruction Head       │
+    │ z ──► Linear ──► 10 LULC Logits │               │ z ──► Deconvs ──► 64×64×3 Patch │
+    │     Loss: Cross-Entropy         │               │       Loss: MSE + SSIM          │
+    └─────────────────────────────────┘               └─────────────────────────────────┘
+```
+
+---
 
 ## Status
 
-Phase 0 infrastructure only. Dataset, models, and training arrive in later
-phases.
+| Component | State |
+|---|---|
+| Environment, quality gates, service stack, ROCm runtime | **Complete** |
+| EuroSAT data pipeline (fetch → extract → validate → split → curate → verify) | **Complete** |
+| Curated dataset `eurosat-rgb-v1.0.0` (27,000 patches; 18,900 / 4,050 / 4,050) | **Complete** |
+| Encoder, decoder, classification head, SSIM and multi-task losses | **Complete** |
+| SSIM boundary-policy benchmark (F-001) | **Complete** — `reports/ssim-boundary/` |
+| Multi-task training, three ablation arms, MLflow + Prometheus telemetry | **Complete** — 10 full-budget runs (4 seeds) |
+| Evidence bundle + multi-seed / per-class analysis (F-002, F-003) | **Complete** — `reports/ablation/evidence/` |
+| Self-bootstrapping experiment notebook | **Complete** — `notebooks/01_hybrid_autoencoder.ipynb` |
+| ASVD compression and MMD drift telemetry | Planned (see `references/README.md` for the lineage) |
 
-## Quick start
+The phase roadmap is maintained locally and is not part of the published tree.
+
+---
+
+## Repository Structure and Data Flow
+
+```
+space-encoder/
+├── configs/                  base experiment config + CPU fast-dev-run overrides
+├── data/
+│   ├── contracts/            immutable dataset expectations
+│   ├── manifests/            committed validation and verification evidence
+│   ├── raw/                  pinned archive + extracted tree   (gitignored)
+│   └── processed/            curated arrays and split indices  (gitignored)
+├── docker/                   ROCm runtime, compose stack, Prometheus, Grafana
+├── notebooks/
+│   └── 01_hybrid_autoencoder.ipynb   evidence-first deliverable notebook
+├── references/               links-only: upstream projects + curated reading
+│   ├── README.md
+│   └── ROCm/README.md
+├── reports/
+│   ├── ablation/
+│   │   ├── ablation.json     tracked three-arm budget and metric record
+│   │   └── evidence/         committed evidence bundle (JSON + NPZ, 1.7 MB)
+│   ├── figures/notebook/     19 rendered figures (transparent backgrounds)
+│   └── ssim-boundary/        F-001 benchmark evidence and figures
+├── scripts/                  data fetch, gates, health checks, ROCm verification
+├── src/eos/
+│   ├── config.py             Pydantic configuration contracts
+│   ├── contracts.py          comment, docstring, and config validators
+│   ├── evaluation.py         checkpoint reload + offline re-evaluation core
+│   ├── dataset/              ingestion, validation, splits, curation, DataModule
+│   ├── experiments/          bounded studies (SSIM boundary policy)
+│   ├── model/                encoder, decoder, heads, composite losses
+│   ├── telemetry/            MMD drift monitoring (Phase 4 home)
+│   ├── training/             LightningModule, runner, MLflow, job metrics
+│   └── utils/                logging, visualization, seeding
+└── tests/                    unit + integration suites (256 tests)
+```
+
+### Data Flow
+
+```
+┌──────────────────┐    ┌────────────────────┐    ┌─────────────────────────┐
+│ EuroSAT archive  │ ─► │ eos-data pipeline  │ ─► │ data/processed/         │
+│ (pinned SHA-256) │    │ validate · dedup   │    │ eurosat-rgb-v1.0.0      │
+└──────────────────┘    │ split · curate     │    │ memmap + splits + stats │
+                        └────────────────────┘    └───────────┬─────────────┘
+                                                              │
+┌─────────────────────────────────────────────────────────────▼─────────────┐
+│ TRAINING (ROCm container, bf16-mixed)                                      │
+│ eos-train {hybrid | classifier | autoencoder} × seeds {42, 7, 123, 2024}   │
+│ MLflow: params, per-epoch metrics, best checkpoint, metrics.json           │
+│ Prometheus: fit wall-time, GPU util → Grafana dashboards                   │
+└──────────────────────────────┬────────────────────────────────────────────┘
+                               │
+┌──────────────────────────────▼────────────────────────────────────────────┐
+│ EVALUATION & EVIDENCE (float32, no retraining)                             │
+│ scripts/build_evidence.py → reports/ablation/evidence/                     │
+│ run_metrics.json (per-class F1, confusion, histories) + embeddings/recon   │
+│ notebooks/01_hybrid_autoencoder.ipynb renders the evidence                 │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Codebase Flow
+
+### Stage 1 — Data engineering (`src/eos/dataset/`, `scripts/fetch_eurosat.py`)
+
+| Module | Role |
+|---|---|
+| `ingest.py` / `cli.py` | Download with retries, ranged resume, pinned SHA-256 check |
+| `validate.py` | Decode every image; exact and perceptual duplicate detection; quarantine |
+| `splits.py` | Deterministic, group-aware, stratified 70/15/15 assignment (seed 42) |
+| `curate.py` / `storage.py` | Image memmap, labels, split indices, channel statistics |
+| `manifest.py` | Content-addressed manifest with fingerprint `f7ccc0bc…f9754570` |
+| `eurosat_datamodule.py` | `LightningDataModule` with augmentation-free test transforms |
+
+### Stage 2 — Models and objectives (`src/eos/model/`)
+
+| Module | Role |
+|---|---|
+| `encoder.py` / `decoder.py` | Exact `64 → 32 → 16 → 8 → 4` strided convs; symmetric `ConvTranspose2d` decoder |
+| `classifier.py` | Hidden projection + 10-class logits head |
+| `hybrid_cae.py` | `HybridCAE`, `PureCNN`, `ConvAE` — identical components, different objectives |
+| `losses.py` | Composite `α·MSE + (1−α)(1−SSIM)` with masked/valid boundary policies (F-001) |
+| `experiments/ssim_boundary.py` | Bounded study: what the SSIM boundary policy actually penalizes |
+
+### Stage 3 — Training (`src/eos/training/`)
+
+| Module | Role |
+|---|---|
+| `lightning_module.py` | One `LightningModule` for all three arms; scheduled λ(t) reconstruction weight |
+| `runner.py` | Trainer construction, callbacks, budget normalization, resume |
+| `mlflow_logger.py` | Parameter flattening, per-epoch metrics, artifact logging |
+| `job_metrics.py` | Prometheus job wall/GPU times pushed via Pushgateway |
+| `cli.py` | `eos-train` with `hybrid`, `classifier`, `autoencoder`, `ablation` |
+
+### Stage 4 — Evaluation and evidence (`src/eos/evaluation.py`, `scripts/build_evidence.py`)
+
+| Component | Role |
+|---|---|
+| `load_module_from_checkpoint` | Rebuilds a module from the provenance inside every checkpoint — no config drift |
+| `evaluate_classification` / `evaluate_reconstruction` | Macro-F1, per-class F1, confusion; MSE + SSIM masked + SSIM valid |
+| `collect_embeddings` / `collect_recon_samples` | Deterministic, class-balanced latent and image sampling |
+| `scripts/build_evidence.py` | MLflow discovery → checkpoint cache → full re-evaluation → committed bundle |
+
+### Stage 5 — Deliverable notebook (`notebooks/01_hybrid_autoencoder.ipynb`)
+
+Self-bootstrapping (Colab clone + install), CPU `fast-dev-run` profile,
+load-and-re-evaluate narrative path, ablation table, multi-seed distributions,
+per-class slice, confusion matrices, patch grids across all 10 classes, residual
+heatmaps, PCA/t-SNE/3D latent projections, loss trajectories, and the findings
+cell. It never retrains models to produce results.
+
+---
+
+## Core Competency
+
+### Optimization
+
+| Technique | Module |
+|---|---|
+| **Composite MSE + SSIM objective** | Structural term regularizes the bottleneck; masked-window policy (F-001) |
+| **Scheduled multi-task balancing** | λ(t) annealed `0.3 → 0.1` inside the `[0.1, 0.5]` band |
+| **Mixed precision discipline** | `bf16-mixed` on GPU, `32-true` on CPU; SSIM always float32 with autocast disabled |
+| **ASVD (planned)** | Adaptive SVD rank truncation of dense layers (lineage: wafer project) |
+| **Deterministic evidence** | Float32 re-evaluation of stored checkpoints; per-precision metrics labelled (F-002) |
+
+### MLOps & Services
+
+| Tool | Purpose |
+|---|---|
+| **MLflow** | Run tracking, best-checkpoint artifacts, metrics JSON lineage |
+| **Prometheus + Pushgateway** | Job fit/wall-time and GPU telemetry |
+| **Grafana** | EOS Training / Latent Drift / Compression dashboards |
+| **Docker (ROCm)** | WSL2 DXCore GPU paravirtualization, pinned `rocm/pytorch` image |
+| **GitHub Actions** | Single blocking quality-gate job, path-scoped tooling |
+| **DVC** | Content-addressed dataset stages (`dvc.yaml` mirrors the CLI graph) |
+
+### Algorithms
+
+| Algorithm | Application |
+|---|---|
+| **Shared-encoder multi-task CNN** | Classification + reconstruction on one 128-d bottleneck |
+| **SSIM (masked / valid policies)** | Structural similarity with explicit boundary semantics |
+| **Per-class F1 analysis** | Mechanism-sensitive endpoint (cropland complex, F-003) |
+| **t-SNE / PCA manifold projections** | Latent geometry comparison across arms |
+| **MMD two-sample test (planned)** | RKHS drift detection on L2-normalized embeddings |
+
+### Software Engineering
+
+| Practice | Implementation |
+|---|---|
+| **Strict typing** | `mypy --strict` over `src/` and `scripts/` |
+| **Contract gate** | Pydantic configs, zero `#` comments, Google docstrings — AST-enforced |
+| **Test discipline** | 256 tests, 85% coverage floor (current: 90.9%), TDD for model and loss work |
+| **Scoped tooling** | ruff/mypy restricted to `src scripts tests notebooks` at every layer (AGENTS.md §4.5) |
+| **Deterministic packaging** | `uv` with lockfile; reproducible evidence bundle from committed scripts |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.12 (`uv python install 3.12`)
+- Docker + Docker Compose (services and the ROCm training container)
+- Optional: AMD GPU under WSL2 for full-budget training
+
+### Installation
 
 ```bash
+git clone https://github.com/ayman-codes/space-encoder.git
+cd space-encoder
 uv python install 3.12
 uv sync --all-groups --extra notebook
-uv run ruff check .
-uv run mypy
-uv run pytest
-uv run python scripts/validate_contracts.py
 ```
 
-## Services
+### Dataset
 
 ```bash
-docker compose -f docker/docker-compose.yml --env-file .env up -d
+uv run eos-data all        # full local pipeline
+uv run eos-data status     # manifest state and fingerprint
+uv run eos-data verify     # manifest, split, and array invariants
 ```
 
-MLflow runs on port 5001, Prometheus on 9092, Pushgateway on 9091, and
-Grafana on 3001. Ports 5000/3000/9090 are intentionally avoided because they
-are commonly occupied by other local stacks.
+Published dataset: 27,000 RGB patches (64 × 64, 10 classes) — train 18,900 ·
+validation 4,050 · test 4,050, exact per-class allocation, perceptual-duplicate
+groups isolated within one split. Radiometric contract: inputs scaled to
+`[0, 1]`, decoder terminated with `Sigmoid`; ImageNet mean/std normalization is
+never applied.
 
-MLflow artifacts are stored in the `mlflow_data` volume. An S3-compatible
-artifact store is deferred until a supported server image is selected.
+### Services
 
-## ROCm GPU runtime
+| Service | URL | Image |
+|---|---|---|
+| MLflow | http://localhost:5001 | `ghcr.io/mlflow/mlflow:v3.12.0` |
+| Prometheus | http://localhost:9092 | `prom/prometheus:v3.9.1` |
+| Pushgateway | http://localhost:9091 | `prom/pushgateway:v1` |
+| Grafana | http://localhost:3001 | `grafana/grafana:12.4.13` |
+| JupyterLab | http://localhost:8888 | local `eos-rocm:10.1.0` (`--profile gpu`) |
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/start_services.ps1
+uv run python scripts/health_check.py
+```
+
+### Tests
+
+```bash
+uv run pytest --cov                                   # full suite
+uv run pytest -q -m "not gpu and not slow and not integration"   # fast subset
+```
+
+---
+
+## Quality Gates
+
+Four blocking gates run locally and in CI. Nothing merges without all four.
+
+| Gate | Tool | Enforces |
+|---|---|---|
+| Contracts | `scripts/validate_contracts.py` | Pydantic configs, zero `#` comments, Google docstrings everywhere |
+| Lint & format | `ruff format --check`, `ruff check` | `E,F,W,I,N,UP,B,ANN,D,ERA,SIM,PL,PT,RUF,PTH` at line length 100 |
+| Types | `mypy --strict` | Zero untyped definitions across `src/` and `scripts/` |
+| Tests | `pytest --cov` | Unit + integration suites, 85% coverage floor |
+
+```bash
+uv run ruff format --check src scripts tests notebooks
+uv run ruff check src scripts tests notebooks
+uv run mypy
+uv run python scripts/validate_contracts.py
+uv run pytest --cov
+```
+
+Current baseline: **256 tests passing, 90.9% coverage**, `mypy --strict` clean.
+Ruff and mypy are scoped to this repository's code at every layer — CI, the
+gate script, `pyproject.toml`, and pre-commit all exclude dependency caches,
+`references/`, and generated artifacts (AGENTS.md §4.5).
+
+`scripts/gate.ps1` is the blocking authority; `scripts/precommit.ps1 --all-files`
+is the fast staged-file subset.
+
+---
+
+## Training
+
+`eos-train` exposes the three ablation arms and an aggregate command. All arms
+share one `LightningModule`, one optimizer schedule, one metric contract, and
+one budget; only the objective differs.
+
+```bash
+uv run eos-train hybrid --fast-dev-run
+uv run eos-train classifier --config configs/base.yaml
+uv run eos-train hybrid --max-epochs 1
+uv run eos-train hybrid --resume checkpoints/last.ckpt
+uv run eos-train ablation --fast-dev-run
+```
+
+| Arm | Model | Objective | Checkpoint monitor |
+|---|---|---|---|
+| `hybrid` | `HybridCAE` | `CE + λ(t)·(α·MSE + (1−α)(1−SSIM))` | `val/macro_f1` (max) |
+| `classifier` | `PureCNN` | `CE` | `val/macro_f1` (max) |
+| `autoencoder` | `ConvAE` | `α·MSE + (1−α)(1−SSIM)` | `val/recon_mse` (min) |
+
+Full-budget contract: AdamW (lr 1e-3, weight decay 1e-4), 2-epoch linear warmup
+into cosine decay, gradient clipping 1.0, batch 128, 30 epochs. Outputs:
+`checkpoints/<arm>-NN.ckpt`, `reports/training/<arm>/metrics.json` (gitignored),
+`reports/ablation/ablation.json` (tracked).
+
+Inside the ROCm container the tracking URI is the compose service name
+(`MLFLOW_TRACKING_URI=http://mlflow:5000`); `localhost:5001` is the host-side
+URL. Design record: `.opencode/progress/phase3-report.md` (local).
+
+---
+
+## Evaluation & Evidence Bundle
+
+Training is never repeated to produce results. `scripts/build_evidence.py`
+discovers the full-budget runs in MLflow, caches their best checkpoints, and
+re-evaluates all of them on the 4,050-patch test split in float32:
+
+```bash
+docker compose -f docker/docker-compose.yml --env-file .env --profile gpu \
+  run --rm --no-deps eos-gpu uv run --no-sync python scripts/build_evidence.py
+```
+
+| Artifact | Contents |
+|---|---|
+| `reports/ablation/evidence/run_metrics.json` | Per-run provenance, macro-F1, per-class F1, confusion, MSE/SSIM pair, per-epoch histories |
+| `embeddings_{classifier,hybrid}.npz` | 1,200 × 128 float32 bottlenecks, class-balanced |
+| `recon_samples_{autoencoder,hybrid}.npz` | Original/reconstructed uint8 patches across all 10 classes |
+
+Total bundle size: 1.7 MB, tracked, deterministic, and idempotent to rebuild.
+
+---
+
+## Experimental Findings
+
+Consolidated research notes: [`findings.md`](findings.md).
+
+### F-001 — SSIM boundary policy (Decided)
+
+An 11×11 SSIM window cannot be centered on the outer five pixels of a 64×64
+patch; the policy choice changes what the loss penalizes.
+
+| Policy | Map | Border-noise drop | Area-normalized border ratio |
+|---|:---:|---:|---:|
+| `valid` (crop) | 54×54 | 0.0792 | 0.275 |
+| `zero` (same-pad) | 64×64 | 0.1629 | 0.734 |
+| `masked` (support-normalized) | 64×64 | 0.2612 | 1.138 |
+
+`masked` is the only policy near area parity and is the loss default. Evidence:
+[`reports/ssim-boundary/findings.md`](reports/ssim-boundary/findings.md).
+
+### F-002 — Evaluation precision sets the comparability floor (Decided)
+
+Identical weights give macro-F1 differences up to **0.0048** between bf16-mixed
+logging and float32 re-evaluation; seed pairs can flip sign between regimes.
+All cross-arm comparisons in this repository are made within one labelled
+precision regime (float32 for analysis), and differences below ~0.005 must
+carry the noise budget: training nondeterminism ≤ 0.0015, cross-seed σ ≈ 0.002.
+
+### F-003 — The gain localizes to the cropland complex (Provisional)
+
+Mean per-class F1 delta (hybrid − Pure CNN, float32, 4 seeds):
+HerbaceousVegetation **+0.0084**, AnnualCrop **+0.0061** (4/4 seeds),
+PermanentCrop **+0.0042** — while the hypothesized River/Highway boundary pair
+stays at +0.0021 (2/4 seeds), inside the noise floor. The defensible mechanism
+is spatial-spectral detail retention (texture discrimination), not boundary
+topology. Verdict on the hypothesis: **directionally supported, not confirmed**
+(mean advantage +0.002 bf16 / +0.0034 float32; ≈ 12 seeds per arm to confirm).
+
+---
+
+## GPU Runtime (WSL2 + ROCm)
+
+Training target: **AMD Radeon RX 9070 XT** (RDNA 4, `gfx1201`, 16 GB) through
+WSL2 DXCore paravirtualization.
 
 ```bash
 docker compose -f docker/docker-compose.yml --env-file .env --profile gpu build eos-gpu
@@ -44,11 +421,136 @@ docker compose -f docker/docker-compose.yml --env-file .env --profile gpu run --
   eos-gpu uv run --no-sync python scripts/verify_rocm.py
 ```
 
-The service publishes JupyterLab on port 8888 with the token from
-`JUPYTER_TOKEN`, mounts the repository at `/workspace`, and requests
-`/dev/dxg`. WSL2 resolves the ROCm userspace through `/usr/lib/wsl/lib`, so
-that directory is mounted read-only and added to `LD_LIBRARY_PATH`; without it
-the HIP loader cannot find `libdxcore.so`.
+Pinned image: `rocm/pytorch:rocm10.1.0_ubuntu24.04_py3.12_pytorch_release_2.14.0`.
 
-`HSA_OVERRIDE_GFX_VERSION` is deliberately unset: `gfx1201` is native on ROCm
-10.1.0 and overriding it degrades performance.
+Wiring that is easy to get wrong:
+
+- mount only `/dev/dxg`; never `/dev/kfd` or `/dev/dri` in WSL2;
+- bind `/usr/lib/wsl/lib:/usr/lib/wsl/lib:ro` and put it on `LD_LIBRARY_PATH`,
+  otherwise `libdxcore.so` is not found and `torch.cuda.is_available()` is `False`;
+- `ipc: host` and `shm_size: "16gb"` to keep DataLoader workers from deadlocking;
+- `HSA_OVERRIDE_GFX_VERSION` stays unset — `gfx1201` is native on ROCm 10.1.0;
+- mixed precision resolves at runtime: `bf16-mixed` on GPU, `32-true` on CPU;
+  FP16 is never used because unscaled SSIM variance denominators underflow.
+
+---
+
+## CI/CD Pipeline
+
+One blocking job on `push` and `pull_request` to `main`/`master`, running in
+`ghcr.io/astral-sh/uv:python3.12-bookworm-slim`:
+
+```
+sync → ruff format → ruff lint → contract gate → mypy strict → pytest --cov
+```
+
+| Step | Command | Notes |
+|---|---|---|
+| Sync | `uv sync --frozen --all-groups` | Lockfile-pinned |
+| Ruff format | `uv run ruff format --check src scripts tests notebooks` | Path-scoped by design (AGENTS.md §4.5) |
+| Ruff lint | `uv run ruff check src scripts tests notebooks` | Same scope |
+| Contract gate | `uv run python scripts/validate_contracts.py` | Zero-`#`, docstrings, config contracts |
+| Mypy | `uv run mypy` | `files = ["src", "scripts"]` |
+| Pytest | `uv run pytest --cov` | 85% coverage floor |
+
+## Monitoring Architecture
+
+```
+Training / evaluation runs
+      │
+      ▼
+Job metrics (job_metrics.py) ──► Pushgateway ──► Prometheus ──► Grafana
+      │
+      ▼
+MLflow: parameters, per-epoch metrics, checkpoints, metrics.json
+```
+
+Grafana ships three provisioned dashboards — **EOS Training**, **EOS Latent
+Drift**, **EOS Compression** — querying `eos_recon_mse`, `eos_val_macro_f1`,
+`eos_mmd_score`, `eos_mmd_alarm`, `eos_asvd_param_ratio`, `eos_asvd_f1_delta`.
+The MMD/ASVD series populate when Phase 4 lands.
+
+---
+
+## Agent Skills
+
+The repository vendors 27 agent skills under `.opencode/skills/` (local-only),
+refreshed with `node scripts/vendor_skills.mjs`. They cover data engineering
+contracts and pipelines, PyTorch Lightning, MLflow, Pydantic, pytest/TDD,
+ruff/CI/docker conventions, research, and browser tooling.
+
+---
+
+## Development Workflow
+
+```powershell
+git config --local core.hooksPath .githooks   # one line per fresh clone
+powershell -ExecutionPolicy Bypass -File scripts/precommit.ps1 --all-files
+```
+
+`.githooks/pre-commit` sets `PRE_COMMIT_HOME=.cache/pre-commit` and delegates to
+the pinned `pre-commit` in `.venv`. Conventions worth knowing before a PR:
+
+- **No `#` comments** in Python or notebook code cells. Document with Google
+  docstrings; only shebangs, `# type: ignore[...]`, and `# noqa: CODE` are allowed.
+- **Configs are contracts.** Unknown keys fail at load time; adding a field means
+  updating `src/eos/config.py`, `configs/*.yaml`, and the contract tests.
+- **`references/` is links-only.** Upstream projects are cited by URL
+  ([`references/README.md`](references/README.md)); code adapted into `src/`
+  names its provenance in the module docstring.
+- **Tool scope is enforced everywhere.** ruff/mypy inspect `src scripts tests
+  notebooks` only; any new tool cache must be gitignored and excluded in
+  `pyproject.toml`, `.pre-commit-config.yaml`, and CI in the same commit.
+- **The published tree is curated.** `.vscode/`, the local roadmap, and
+  vendored dumps are never committed.
+
+---
+
+## Roadmap
+
+| Phase | Scope | State |
+|---|---|---|
+| 2 | Encoder, decoder, heads, MSE + SSIM losses | **Done** — exact `64 → 4 → 64` symmetry, SSIM float32 guard |
+| 3 | LightningModule, three ablation arms, MLflow | **Done** — 10 full-budget runs, 4 seeds, metrics of record |
+| 4 | ASVD compression, MMD calibration and drift monitoring | Planned — lineage in `references/README.md` |
+| 5 | Self-bootstrapping notebook + evidence bundle | **Done** — notebook renders committed evidence |
+
+ASVD stays a bounded experiment: the hidden classifier projection is only ~8.3k
+parameters, so compression is reported over the dense parameter set and over the
+whole model separately.
+
+---
+
+## Troubleshooting Mini-Guide
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `torch.cuda.is_available()` is `False` in the container | `libdxcore.so` not on the loader path | mount `/usr/lib/wsl/lib` read-only, export `LD_LIBRARY_PATH=/usr/lib/wsl/lib` |
+| DataLoader hangs with workers | shared memory exhausted | `ipc: host`, `shm_size: "16gb"`, or `num_workers=0` |
+| CI `ruff` reformats thousands of cache files | tool discovered dependency caches | scope commands to `src scripts tests notebooks`; cache dirs must be gitignored + in `extend-exclude` (AGENTS.md §4.5) |
+| MLflow artifact upload fails with `WinError 5` | container-local artifact root advertised | `--serve-artifacts` + `--artifacts-destination`, experiment with `mlflow-artifacts:/` |
+| `PermissionError: [WinError 5]` from pre-commit | hook store defaults outside the repo | `PRE_COMMIT_HOME=.cache/pre-commit`, hooks via `.githooks` |
+| Manifest fingerprint mismatch | manifest rebuilt with different contract or seed | rerun `eos-data split` after confirming the contract |
+| Coverage gate fails | new module without tests | add unit tests; the floor is 85% |
+
+---
+
+## References
+
+Curated links — related project, similar implementations, and local notes —
+live in [`references/README.md`](references/README.md). Design lineage for
+ASVD and MMD telemetry:
+[Wafer Defect Detection with Ensemble Meta-Learning](https://github.com/ayman-codes/Wafer-Defect-detection-with-Ensemble-meta-learning).
+
+- Helber, P., Bischke, B., Dengel, A., Borth, D. (2019). *EuroSAT: A Novel
+  Dataset and Deep Learning Benchmark for Land Use and Land Cover
+  Classification.* IEEE JSTARS.
+- Wang, Z., Bovik, A. C., Sheikh, H. R., Simoncelli, E. P. (2004). *Image
+  Quality Assessment: From Error Visibility to Structural Similarity.* IEEE TIP.
+- Gretton, A., Borgwardt, K. M., Rasch, M. J., Schölkopf, B., Smola, A. (2012).
+  *A Kernel Two-Sample Test.* JMLR.
+
+## License
+
+MIT. The EuroSAT dataset is distributed under the terms of its Zenodo record;
+see the dataset card for the authoritative statement.

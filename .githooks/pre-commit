@@ -1,0 +1,21 @@
+#!/usr/bin/env sh
+set -eu
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root"
+
+export PRE_COMMIT_HOME="$repo_root/.cache/pre-commit"
+export UV_CACHE_DIR="$repo_root/.cache/uv"
+export PYTHONUTF8=1
+
+if [ -x "$repo_root/.venv/Scripts/python.exe" ]; then
+    python_bin="$repo_root/.venv/Scripts/python.exe"
+elif [ -x "$repo_root/.venv/bin/python" ]; then
+    python_bin="$repo_root/.venv/bin/python"
+else
+    echo "pre-commit: no virtual environment found; run 'uv sync --all-groups' first" >&2
+    exit 1
+fi
+
+exec "$python_bin" -m pre_commit run --hook-stage pre-commit \
+    --config "$repo_root/.pre-commit-config.yaml"

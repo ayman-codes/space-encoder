@@ -11,6 +11,7 @@ site-packages/
 **/.mypy_cache/
 **/.pytest_cache/
 **/.ruff_cache/
+.uv-cache/
 .hypothesis/
 .coverage
 coverage.xml
@@ -27,6 +28,8 @@ htmlcov/
 # --- Data and experiment artifacts -----------------------------------------
 **/data/raw/
 **/data/processed/
+**/data/quarantine/
+**/data/runs/
 **/mlruns/
 **/mlartifacts/
 **/mlflow.db
@@ -36,6 +39,7 @@ htmlcov/
 **/*.ckpt
 **/*.pt
 **/*.onnx
+**/reports/training/
 
 # --- Local scratch ----------------------------------------------------------
 .tmp/
@@ -45,6 +49,7 @@ Thumbs.db
 *.log
 .cache/
 pytest-of-*/
+torchinductor_*/
 
 # --- Hard restriction: vendored reference project artifacts ------------------
 references/**/.venv/
@@ -68,4 +73,12 @@ CLAUDE.md
 opencode.json
 .secrets/
 skills-lock.json
-.vscode/PythonImportHelper-v2-Completion.json
+.vscode/
+
+# --- Agent planning scratch: local only, the core roadmap is plan.md --------
+plan.md
+plan/
+**/plan/
+**/temp/plan/
+**/.opencode/plan/
+*.local.plan.md

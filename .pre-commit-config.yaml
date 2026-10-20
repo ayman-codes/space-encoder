@@ -1,13 +1,22 @@
-repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.1
-    hooks:
-      - id: ruff
-        args: [--fix]
-      - id: ruff-format
+exclude: ^(references|data|\.cache|\.uv-cache|\.venv|\.dvc|mlruns|reports|checkpoints|\.vscode)/
 
+repos:
   - repo: local
     hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check --fix --force-exclude
+        language: system
+        types_or: [python, jupyter]
+        require_serial: true
+
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format --force-exclude
+        language: system
+        types_or: [python, jupyter]
+        require_serial: true
+
       - id: contract-gate
         name: contract gate (comments, docstrings, configs)
         entry: uv run python scripts/validate_contracts.py
