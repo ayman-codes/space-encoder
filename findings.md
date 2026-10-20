@@ -453,3 +453,203 @@ effects.
    noisy at the ±0.01 level.
 3. The float32 regime is canonical here (F-002); the same table from bf16
    values reorders rows below rank 3.
+
+# F-004 — ASVD rank truncation buys 39% dense-parameter reduction at noise-level macro-F1 cost, and only the energy band decides whether M4 is met
+
+**Date:** 2026-10-20
+**Artifacts:** `reports/compression/benchmark.json`
+**Code:** `src/eos/model/compression.py`, `scripts/run_asvd_benchmark.py`
+**Reproduce:** `uv run python scripts/run_asvd_benchmark.py --checkpoint <ckpt> …`
+per checkpoint; the JSON carries every layer record, rank, and metric.
+
+## 1. Why this question exists
+
+`plan.md` milestone M4 commits the project to "≥ 30% parameter reduction in
+dense heads with < 1.5% macro-F1 loss" after ASVD factorization of the trained
+model. The `ASVDConfig` contract constrains the experiment to the energy band
+E ∈ [0.90, 0.95], forbids factorizing the calibrated logits layer, and
+documents the hidden classifier projection (64×128) as a likely negative
+control. Whether the milestone holds — and at which energy — is empirical.
+
+## 2. Setup
+
+Stored Stage-E seed-42 best checkpoints (hybrid, classifier, autoencoder),
+freshly reloaded per variant because factorization rewrites weights in place.
+Float32 re-evaluation of the 4,050-patch test split (F-002 regime) via
+`src/eos/evaluation.py`; every scope (`classifier`, `bottleneck`,
+`all_intermediate`) swept over the energy band endpoints {0.90, 0.95}; the
+compression-gain guard requires `mn/(k(m+n)) ≥ 1.1` or the layer is recorded as
+skipped with its measured rank. Latency: CPU forward, batch 128, median of 10
+passes after 3 warm-up passes.
+
+## 3. Results
+
+Hybrid checkpoint (6,453,421 parameters, baseline macro-F1 0.94947):
+
+| Scope | E | Ranks (enc/dec/hidden) | Dense Δ | Model Δ | macro-F1 Δ |
+|---|---:|---|---:|---:|---:|
+| classifier | 0.90 | — / — / skip(39) | 0.0% | 0.0% | +0.0002 |
+| bottleneck | 0.90 | 48 / 105 / — | **−39.15%** | −12.77% | **+0.0002** |
+| bottleneck | 0.95 | 80 / skip(115) / — | −18.19% | −5.93% | +0.0000 |
+| all_intermediate | 0.90 | 48 / 105 / skip(39) | −38.99% | −12.77% | +0.0002 |
+
+Classifier checkpoint (2,609,546 parameters, baseline macro-F1 0.94852):
+bottleneck E=0.90 factorizes `encoder.projection` at rank 47 → **−62.70%**
+dense (−25.20% model) at +0.0002 macro-F1; E=0.95 → −36.52%. Autoencoder:
+−12.27% at E=0.90 (ranks 109/112), everything gain-guard-skipped at E=0.95.
+
+**M4 verdict: met at E = 0.90** — 39.2% dense reduction at +0.0002 macro-F1
+for the champion architecture, and 62.7% for the pure classifier.
+
+## 4. Analysis
+
+**A1 — The energy band, not the scope, decides the milestone.** At E = 0.95
+the hybrid retains 80/128 encoder components and the decoder projection misses
+the gain floor by 0.004 (1.096 vs 1.1) and is skipped entirely: 18.2% is the
+ceiling there. At E = 0.90 the same layers drop to ranks 48 and 105 and clear
+30% with margin. Reporting an ASVD result without its energy setting is
+meaningless.
+
+**A2 — Macro-F1 is insensitive to rank truncation at this scale.** All deltas
+sit inside ±0.0003, an order of magnitude below the F-002 comparability floor
+(≈ 0.005). The factorization is near-lossless for argmax decisions at these
+ranks; the price of compression on the classification endpoint is not
+resolvable at n = 4050 test samples, and the honest statement is preservation,
+not improvement (the +0.0002 signs are argmax noise).
+
+**A3 — The classifier-only scope is the documented negative control, exactly
+as `ASVDConfig` predicted.** `classifier.hidden` is skipped at every energy —
+measured ranks 39/47 against a 64×128 weight — with the skip recorded, never
+silent. The bottleneck projections (128×8192 each) carry 99.6% of the dense
+set and are the only meaningful ASVD target.
+
+**A4 — Wall-clock speedup is not demonstrated on CPU.** Two measurement passes
+under different system load disagree in sign (autoencoder bottleneck: −18% in
+one pass, +24% in the other; hybrid 201–254 ms against a 206–265 ms baseline).
+The factorized projection cuts MACs ~2.7× at rank 47–48, but the hybrid forward
+is convolution-dominated, so the achievable latency win is small and swamped
+by measurement noise on a loaded host. The parameter and memory reduction is
+the robust claim.
+
+## 5. Decision record
+
+**Context.** The deliverable ablation table needs an ASVD-compressed arm, and
+M4 fixes its acceptance bar.
+
+**Decision.** The compressed arm is `bottleneck` scope at E = 0.90 (ranks
+48/105 on the hybrid): 39.15% dense-parameter reduction at preserved
+macro-F1. Dense-set and whole-model reductions are reported separately
+(−39.15% vs −12.77%) because the convolutions dominate the model. The
+classifier-scope result ships as the negative control.
+
+**Consequences.** The notebook ablation table's fourth row is filled from
+`benchmark.json`; any MMD baseline calibrated on the uncompressed champion is
+stale after factorization and must be recalibrated (F-005 demonstrates the
+enforcement); latency claims stay out of the headline until the quiet-GPU
+measurement lands.
+
+## 6. Threats to validity
+
+1. One checkpoint per arm (seed 42); the multi-seed campaign does not repeat
+   ASVD, so rank positions are not distributional claims.
+2. Latency evidence is CPU-only under concurrent load and disagrees in sign
+   across passes; the quiet-GPU pass is pending and A4 may sharpen into a real
+   speedup claim or a bounded null.
+3. Macro-F1 preservation could hide logit drift that per-class F1 at n ≈ 405
+   cannot resolve; the reconstruction side of the hybrid (decoder rank 105) is
+   covered by recon MSE in the artifact and moves by less than 1% relative.
+4. The gain-guard threshold (1.1) is a configuration choice; the decoder skip
+   at E = 0.95 sits 0.4% from the floor, so the boundary is tight.
+
+# F-005 — The unbiased MMD U-statistic with a live-batch-size bootstrap separates class-mix and radiometric drift from the in-distribution null
+
+**Date:** 2026-10-20
+**Artifacts:** `reports/telemetry/mmd_baseline.json`,
+`reports/telemetry/mmd_reference.npz`, `reports/telemetry/drift_demo.json`
+**Code:** `src/eos/telemetry/mmd.py`, `src/eos/telemetry/mmd_drift.py`,
+`scripts/calibrate_mmd.py`
+**Reproduce:** `uv run python scripts/calibrate_mmd.py --checkpoint <ckpt>
+--demonstrate --push`
+
+## 1. Why this question exists
+
+`plan.md` Phase 4 requires live latent-drift telemetry: a calibrated RKHS
+baseline over validation embeddings and a two-sample test with an alarm at
+μ_base + 3σ_base. Two estimator choices decide whether that alarm is usable:
+the biased V-statistic inflates when baseline and batch sizes differ, and a
+null bootstrapped at the wrong batch size calibrates a threshold that no live
+batch is ever measured against.
+
+## 2. Setup
+
+Champion hybrid checkpoint; bottleneck embeddings over the full validation
+split (4,050 = 405/class, L2-normalized). Bandwidths σ_med × {0.25, 0.5, 1.0,
+2.0, 4.0} from the median heuristic over validation pairwise distances.
+Reference: seeded 500-row subsample. Null: 500 bootstrap draws of two disjoint
+128-row blocks (the live batch size) scored with the unbiased U-statistic
+(diagonals removed). Live scoring: batch vs full reference. Baseline
+fingerprint binds checkpoint digest + ASVD state + manifest digest.
+
+## 3. Results
+
+Calibrated: μ = 0.00003, σ = 0.00928, threshold = **0.02787** (μ + 3σ).
+
+| Scenario | mmd² | Alarm | × threshold |
+|---|---:|:---:|---:|
+| Random cross-class validation batch | **−0.0094** | no | — |
+| Same batch, +0.25 radiometric pixel shift | **0.6316** | **yes** | 22.7× |
+| Single-class slice of the class-ordered loader | **0.9260** | **yes** | 33.2× |
+
+Stale-baseline enforcement: a monitor bound to a post-ASVD fingerprint refuses
+the pre-ASVD baseline with "baseline is stale for this model state;
+recalibrate after any ASVD pass".
+
+## 4. Analysis
+
+**A1 — The unbiased estimator centers correctly at zero.** The in-distribution
+score is slightly negative (−0.0094), which is expected for the U-statistic and
+would be impossible for the biased V-statistic; at n = 128 vs N = 500 the
+V-form adds a diagonal term that inflates exactly where the alarm threshold is
+decided.
+
+**A2 — The monitor detects class-mix shift as well as radiometric shift.** The
+initial demonstration batch was drawn from the loader in order and turned out
+to be 128 samples of a single class (the curated validation loader streams
+class-ordered); it alarmed at 33× threshold. That is correct behavior — a
+single-class batch *is* distribution shift against a mixed reference — and it
+is now a documented capability rather than a demonstration artifact.
+
+**A3 — The bootstrap batch size is the calibration's load-bearing choice.**
+The null is bootstrapped as block-vs-block at n = 128 while live scoring
+compares n = 128 against N = 500; the n-vs-n null is the conservative choice
+(the estimator variance is larger than the live n-vs-N case), which the clean
+null score confirms empirically.
+
+## 5. Decision record
+
+**Context.** Telemetry scope was set to the champion model only (highest macro
+and micro F1 across the campaign evidence), and any ASVD pass rewrites z.
+
+**Decision.** MMD telemetry attaches to the champion; the baseline fingerprint
+binds checkpoint + ASVD state + manifest, and `DriftMonitor` hard-refuses
+mismatched fingerprints instead of silently scoring. The four dashboard series
+(`eos_mmd_score`, `eos_mmd_alarm`, `eos_asvd_param_ratio`, `eos_asvd_f1_delta`)
+are exported through the Pushgateway with per-scenario grouping labels.
+
+**Consequences.** A final champion calibration runs after the confirmation
+campaign; the ASVD-compressed champion variant (F-004) carries its own
+recalibrated baseline in the artifact set; Grafana drift/compression panels are
+populated live.
+
+## 6. Threats to validity
+
+1. The current baseline is calibrated on the seed-42 hybrid checkpoint; the
+   champion designation awaits the n = 12 campaign evidence and the baseline
+   will be recalibrated on it.
+2. Drift power is demonstrated at one radiometric magnitude (+0.25) and one
+   class-mix shift; weaker shifts and other shift families (noise, blur,
+   geometric) are unmeasured.
+3. The demonstration batches overlap the calibration population (same
+   validation split); a true held-out stream would be stricter.
+4. Bootstrap draws are 500; σ at that count is stable to ~3% but the extreme
+   tail behind a 3σ threshold is estimated, not known.
