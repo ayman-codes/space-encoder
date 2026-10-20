@@ -1,0 +1,263 @@
+{
+  "config": {
+    "area_fractions": {
+      "border": 0.2880859375,
+      "interior": 0.7119140625
+    },
+    "bootstrap": 2000,
+    "border": 5,
+    "confidence": 0.95,
+    "noise_std": 0.1,
+    "seed": 42,
+    "sigma": 1.5,
+    "window_size": 11
+  },
+  "dataset": {
+    "manifest_sha256": "f7ccc0bccafc3b9679c4ef2ac934e0df7d2710628119cf6171784561f9754570",
+    "samples": 256,
+    "version": "eurosat-rgb-v1.0.0"
+  },
+  "generated_at": "2026-10-18T16:07:36+00:00",
+  "policies": {
+    "masked": {
+      "baseline_ssim": 1.0,
+      "boundary": "masked",
+      "gradient": {
+        "border_fraction": 0.80251859952769,
+        "border_mass": 1.4006925821304321,
+        "interior_mass": 0.34467828273773193,
+        "total_mass": 1.745370864868164
+      },
+      "map_shape": [
+        64,
+        64
+      ],
+      "perturbations": {
+        "blur": {
+          "description": "3x3 binomial blur over the whole patch",
+          "drop_ci_high": 0.6562570276029873,
+          "drop_ci_low": 0.6235934948956128,
+          "mean_drop": 0.6402688026428223,
+          "mean_ssim": 0.35973119735717773,
+          "std_ssim": 0.13340546190738678
+        },
+        "border_constant": {
+          "description": "border ring replaced by the mid-grey constant 0.5",
+          "drop_ci_high": 0.2750076846568845,
+          "drop_ci_low": 0.26113837243174204,
+          "mean_drop": 0.2678174674510956,
+          "mean_ssim": 0.7321825623512268,
+          "std_ssim": 0.05491836369037628
+        },
+        "border_noise": {
+          "description": "Gaussian noise inside the five-pixel border ring",
+          "drop_ci_high": 0.2691238468629308,
+          "drop_ci_low": 0.25354527664021587,
+          "mean_drop": 0.26120275259017944,
+          "mean_ssim": 0.7387973070144653,
+          "std_ssim": 0.06322919577360153
+        },
+        "identity": {
+          "description": "unmodified prediction, sanity check",
+          "drop_ci_high": 0.0,
+          "drop_ci_low": 0.0,
+          "mean_drop": 0.0,
+          "mean_ssim": 1.0,
+          "std_ssim": 0.0
+        },
+        "interior_noise": {
+          "description": "Gaussian noise inside the interior region",
+          "drop_ci_high": 0.5839858407736755,
+          "drop_ci_low": 0.5505377895082347,
+          "mean_drop": 0.5670494437217712,
+          "mean_ssim": 0.43295061588287354,
+          "std_ssim": 0.13670097291469574
+        },
+        "quantize": {
+          "description": "four-level posterization",
+          "drop_ci_high": 0.391797097568633,
+          "drop_ci_low": 0.36741652401397007,
+          "mean_drop": 0.3797103762626648,
+          "mean_ssim": 0.6202896237373352,
+          "std_ssim": 0.1028522402048111
+        },
+        "shift": {
+          "description": "three-pixel roll along both spatial axes",
+          "drop_ci_high": 0.5684974339324981,
+          "drop_ci_low": 0.497008010186255,
+          "mean_drop": 0.5335804224014282,
+          "mean_ssim": 0.466419517993927,
+          "std_ssim": 0.2891685962677002
+        }
+      }
+    },
+    "valid": {
+      "baseline_ssim": 1.0,
+      "boundary": "valid",
+      "gradient": {
+        "border_fraction": 0.6354069151156184,
+        "border_mass": 0.6751362085342407,
+        "interior_mass": 0.38738954067230225,
+        "total_mass": 1.062525749206543
+      },
+      "map_shape": [
+        54,
+        54
+      ],
+      "perturbations": {
+        "blur": {
+          "description": "3x3 binomial blur over the whole patch",
+          "drop_ci_high": 0.6612019315070938,
+          "drop_ci_low": 0.62747029728489,
+          "mean_drop": 0.644461989402771,
+          "mean_ssim": 0.3555379807949066,
+          "std_ssim": 0.13721638917922974
+        },
+        "border_constant": {
+          "description": "border ring replaced by the mid-grey constant 0.5",
+          "drop_ci_high": 0.1263321763894055,
+          "drop_ci_low": 0.11240454518119805,
+          "mean_drop": 0.11905025690793991,
+          "mean_ssim": 0.8809497356414795,
+          "std_ssim": 0.055259596556425095
+        },
+        "border_noise": {
+          "description": "Gaussian noise inside the five-pixel border ring",
+          "drop_ci_high": 0.08311656988807954,
+          "drop_ci_low": 0.07564965636120177,
+          "mean_drop": 0.0792330950498581,
+          "mean_ssim": 0.9207668900489807,
+          "std_ssim": 0.030273374170064926
+        },
+        "identity": {
+          "description": "unmodified prediction, sanity check",
+          "drop_ci_high": 0.0,
+          "drop_ci_low": 0.0,
+          "mean_drop": 0.0,
+          "mean_ssim": 1.0,
+          "std_ssim": 0.0
+        },
+        "interior_noise": {
+          "description": "Gaussian noise inside the interior region",
+          "drop_ci_high": 0.7318160600552801,
+          "drop_ci_low": 0.6921105648041703,
+          "mean_drop": 0.7117393612861633,
+          "mean_ssim": 0.28826063871383667,
+          "std_ssim": 0.16132071614265442
+        },
+        "quantize": {
+          "description": "four-level posterization",
+          "drop_ci_high": 0.3930032000876963,
+          "drop_ci_low": 0.3680759556824341,
+          "mean_drop": 0.38055500388145447,
+          "mean_ssim": 0.6194449663162231,
+          "std_ssim": 0.1055438444018364
+        },
+        "shift": {
+          "description": "three-pixel roll along both spatial axes",
+          "drop_ci_high": 0.5538956662989222,
+          "drop_ci_low": 0.4810302981000859,
+          "mean_drop": 0.5184075832366943,
+          "mean_ssim": 0.48159244656562805,
+          "std_ssim": 0.2944464385509491
+        }
+      }
+    },
+    "zero": {
+      "baseline_ssim": 1.0,
+      "boundary": "zero",
+      "gradient": {
+        "border_fraction": 0.7982455961701362,
+        "border_mass": 1.3082717657089233,
+        "interior_mass": 0.3306621313095093,
+        "total_mass": 1.6389338970184326
+      },
+      "map_shape": [
+        64,
+        64
+      ],
+      "perturbations": {
+        "blur": {
+          "description": "3x3 binomial blur over the whole patch",
+          "drop_ci_high": 0.6391715482925064,
+          "drop_ci_low": 0.6153190137876663,
+          "mean_drop": 0.6273269057273865,
+          "mean_ssim": 0.3726731240749359,
+          "std_ssim": 0.09808813035488129
+        },
+        "border_constant": {
+          "description": "border ring replaced by the mid-grey constant 0.5",
+          "drop_ci_high": 0.20338229949120432,
+          "drop_ci_low": 0.1836548895575106,
+          "mean_drop": 0.19309592247009277,
+          "mean_ssim": 0.8069040775299072,
+          "std_ssim": 0.0783100351691246
+        },
+        "border_noise": {
+          "description": "Gaussian noise inside the five-pixel border ring",
+          "drop_ci_high": 0.16974459350458346,
+          "drop_ci_low": 0.15664056077366695,
+          "mean_drop": 0.1629357635974884,
+          "mean_ssim": 0.8370643258094788,
+          "std_ssim": 0.05280357971787453
+        },
+        "identity": {
+          "description": "unmodified prediction, sanity check",
+          "drop_ci_high": 0.0,
+          "drop_ci_low": 0.0,
+          "mean_drop": 0.0,
+          "mean_ssim": 1.0,
+          "std_ssim": 0.0
+        },
+        "interior_noise": {
+          "description": "Gaussian noise inside the interior region",
+          "drop_ci_high": 0.5642871675896458,
+          "drop_ci_low": 0.5328074783727061,
+          "mean_drop": 0.5482983589172363,
+          "mean_ssim": 0.4517015814781189,
+          "std_ssim": 0.12915506958961487
+        },
+        "quantize": {
+          "description": "four-level posterization",
+          "drop_ci_high": 0.34193490708130414,
+          "drop_ci_low": 0.32008006214746276,
+          "mean_drop": 0.3311026692390442,
+          "mean_ssim": 0.6688973307609558,
+          "std_ssim": 0.09151831269264221
+        },
+        "shift": {
+          "description": "three-pixel roll along both spatial axes",
+          "drop_ci_high": 0.47150014630751685,
+          "drop_ci_low": 0.4101689173432533,
+          "mean_drop": 0.44139227271080017,
+          "mean_ssim": 0.5586077570915222,
+          "std_ssim": 0.24866721034049988
+        }
+      }
+    }
+  },
+  "schema_version": 1,
+  "sensitivity": {
+    "masked": {
+      "area_ratio": 1.1383146701142428,
+      "border_drop": 0.26120275259017944,
+      "comparable": true,
+      "interior_drop": 0.5670494437217712,
+      "raw_ratio": 0.4606348802245564
+    },
+    "valid": {
+      "area_ratio": 0.27510035385191256,
+      "border_drop": 0.0792330950498581,
+      "comparable": true,
+      "interior_drop": 0.7117393612861633,
+      "raw_ratio": 0.11132318845859289
+    },
+    "zero": {
+      "area_ratio": 0.7343531913879058,
+      "border_drop": 0.1629357635974884,
+      "comparable": true,
+      "interior_drop": 0.5482983589172363,
+      "raw_ratio": 0.2971662434285764
+    }
+  }
+}

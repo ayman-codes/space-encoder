@@ -1,0 +1,141 @@
+{
+  "arms": [
+    {
+      "budget": {
+        "accelerator": "auto",
+        "batch_size": 128,
+        "class_weights": false,
+        "devices": 1,
+        "fast_dev_run": false,
+        "gradient_clip": 1.0,
+        "learning_rate": 0.001,
+        "max_epochs": 30,
+        "precision": "bf16-mixed",
+        "seed": 42,
+        "warmup_epochs": 2,
+        "weight_decay": 0.0001
+      },
+      "checkpoint": "/workspace/checkpoints/classifier-28.ckpt",
+      "metrics": {
+        "lr-AdamW": 1.3112456144881435e-05,
+        "test/accuracy": 0.9511111378669739,
+        "test/ce": 0.14991751313209534,
+        "test/loss": 0.14991751313209534,
+        "test/macro_f1": 0.9486656188964844,
+        "train/ce": 0.13622747361660004,
+        "train/loss": 0.13622747361660004,
+        "val/accuracy": 0.9518518447875977,
+        "val/ce": 0.1442079395055771,
+        "val/loss": 0.1442079395055771,
+        "val/macro_f1": 0.9501173496246338
+      },
+      "metrics_path": "reports/training/classifier/metrics.json",
+      "mode": "classifier",
+      "parameter_count": 2609546
+    },
+    {
+      "budget": {
+        "accelerator": "auto",
+        "batch_size": 128,
+        "class_weights": false,
+        "devices": 1,
+        "fast_dev_run": false,
+        "gradient_clip": 1.0,
+        "learning_rate": 0.001,
+        "max_epochs": 30,
+        "precision": "bf16-mixed",
+        "seed": 42,
+        "warmup_epochs": 2,
+        "weight_decay": 0.0001
+      },
+      "checkpoint": "/workspace/checkpoints/autoencoder-17.ckpt",
+      "metrics": {
+        "lr-AdamW": 1.3112456144881435e-05,
+        "test/loss": 0.03984798491001129,
+        "test/mse": 0.0025174212642014027,
+        "test/recon_mse": 0.0025174212642014027,
+        "test/ssim_masked": 0.7486122250556946,
+        "test/ssim_valid": 0.7535922527313232,
+        "train/loss": 0.039529573172330856,
+        "train/mse": 0.0027551958337426186,
+        "train/recon": 0.039529573172330856,
+        "train/recon_lambda": 1.0,
+        "train/ssim_loss": 0.24791759252548218,
+        "train/ssim_surrogate": 0.7520821690559387,
+        "val/loss": 0.03967418894171715,
+        "val/mse": 0.0025914094876497984,
+        "val/recon_mse": 0.0025914099533110857,
+        "val/ssim_masked": 0.750190019607544,
+        "val/ssim_valid": 0.7546660304069519
+      },
+      "metrics_path": "reports/training/autoencoder/metrics.json",
+      "mode": "autoencoder",
+      "parameter_count": 6444515
+    },
+    {
+      "budget": {
+        "accelerator": "auto",
+        "batch_size": 128,
+        "class_weights": false,
+        "devices": 1,
+        "fast_dev_run": false,
+        "gradient_clip": 1.0,
+        "learning_rate": 0.001,
+        "max_epochs": 30,
+        "precision": "bf16-mixed",
+        "seed": 42,
+        "warmup_epochs": 2,
+        "weight_decay": 0.0001
+      },
+      "checkpoint": "/workspace/checkpoints/hybrid-29.ckpt",
+      "metrics": {
+        "lr-AdamW": 1.3112456144881435e-05,
+        "test/accuracy": 0.951604962348938,
+        "test/ce": 0.15255969762802124,
+        "test/loss": 0.15897221863269806,
+        "test/macro_f1": 0.9492809772491455,
+        "test/recon_mse": 0.006302982568740845,
+        "test/ssim_masked": 0.6082159876823425,
+        "test/ssim_valid": 0.6040699481964111,
+        "train/ce": 0.14246609807014465,
+        "train/loss": 0.14894600212574005,
+        "train/mse": 0.006565592717379332,
+        "train/recon": 0.006479846779257059,
+        "train/recon_lambda": 0.10000013560056686,
+        "train/ssim_loss": 0.39478468894958496,
+        "train/ssim_surrogate": 0.6052151918411255,
+        "val/accuracy": 0.951604962348938,
+        "val/ce": 0.1491481214761734,
+        "val/loss": 0.15559642016887665,
+        "val/macro_f1": 0.949759840965271,
+        "val/recon_mse": 0.006339420098811388,
+        "val/ssim_masked": 0.6060360074043274,
+        "val/ssim_valid": 0.6016569137573242
+      },
+      "metrics_path": "reports/training/hybrid/metrics.json",
+      "mode": "hybrid",
+      "parameter_count": 6453421
+    }
+  ],
+  "budget": {
+    "accelerator": "auto",
+    "batch_size": 128,
+    "class_weights": false,
+    "devices": 1,
+    "fast_dev_run": false,
+    "gradient_clip": 1.0,
+    "learning_rate": 0.001,
+    "max_epochs": 30,
+    "precision": "bf16-mixed",
+    "seed": 42,
+    "warmup_epochs": 2,
+    "weight_decay": 0.0001
+  },
+  "dataset": {
+    "manifest_sha256": "f7ccc0bccafc3b9679c4ef2ac934e0df7d2710628119cf6171784561f9754570",
+    "version": "eurosat-rgb-v1.0.0"
+  },
+  "generated_at": "2026-10-20T13:38:22+00:00",
+  "git_commit": "unknown",
+  "schema_version": 1
+}
