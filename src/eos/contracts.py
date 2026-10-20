@@ -31,14 +31,21 @@ SKIP_DIRECTORIES = frozenset(
         ".opencode",
         ".pytest_cache",
         ".ruff_cache",
+        ".uv-cache",
         ".venv",
+        ".vscode",
         "__pycache__",
+        "checkpoints",
         "data",
+        "docker",
         "mlruns",
         "node_modules",
         "references",
+        "reports",
     }
 )
+
+SKIP_PREFIXES = ("pytest-of-", "torchinductor_")
 
 ALLOWED_COMMENT_PATTERNS = (
     re.compile(r"^#!\s*\S"),
@@ -232,7 +239,8 @@ def _iter_python_files(root: Path) -> Iterable[Path]:
         Path: Each candidate Python file.
     """
     for path in sorted(root.rglob("*.py")):
-        if any(part in SKIP_DIRECTORIES for part in path.relative_to(root).parts):
+        relative = path.relative_to(root).parts
+        if any(part in SKIP_DIRECTORIES or part.startswith(SKIP_PREFIXES) for part in relative):
             continue
         yield path
 

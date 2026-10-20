@@ -104,6 +104,19 @@ def test_scan_tree_skips_references() -> None:
     assert not any("references" in path for path in paths)
 
 
+def test_scan_tree_skips_generated_directories(tmp_path: Path) -> None:
+    """Generated caches must stay outside the scan, even with foreign bytes."""
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "module.py").write_text('"""Module docstring."""\n', encoding="utf-8")
+    cache = tmp_path / ".uv-cache" / "archive-v0"
+    cache.mkdir(parents=True)
+    (cache / "foreign.py").write_bytes(b'"""Doc."""\nvalue = "\xa4"\n')
+    scratch = tmp_path / "pytest-of-runner"
+    scratch.mkdir()
+    (scratch / "scratch.py").write_bytes(b'"""Doc."""\nvalue = "\xa4"\n')
+    assert scan_tree(tmp_path) == []
+
+
 def test_dataset_contracts_validate(tmp_path: Path) -> None:
     """A broken dataset contract must be reported by the contract gate."""
     contract = tmp_path / "broken.yaml"
