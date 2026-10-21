@@ -12,8 +12,8 @@
 ![CI](https://img.shields.io/badge/ci-github%20actions-2088FF?logo=githubactions&logoColor=white)
 ![Ruff](https://img.shields.io/badge/lint-ruff-261230?logo=ruff&logoColor=white)
 ![mypy](https://img.shields.io/badge/types-mypy%20strict-2A6DB2)
-![pytest](https://img.shields.io/badge/tests-256%20passing-3fb950)
-![coverage](https://img.shields.io/badge/coverage-90.9%25-3fb950)
+![pytest](https://img.shields.io/badge/tests-311%20passing-3fb950)
+![coverage](https://img.shields.io/badge/coverage-90.7%25-3fb950)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 </div>
@@ -30,12 +30,11 @@ produces a 128-dimensional bottleneck consumed by two heads:
 - a **symmetric decoder** trained to reconstruct the input, regularizing the
   latent space with a composite MSE + SSIM objective.
 
-The research question is causal and budget-controlled: *does adding the
-reconstruction objective improve classification over a pure CNN at identical
-architecture, data, budget, and seed?* The answer this repository can currently
-defend is **directionally supported, not confirmed** — and the measured gain
-localizes to texture-discriminated cropland classes rather than to boundary
-topology (see [Findings](#experimental-findings)).
+The research question is simple: *does adding the reconstruction objective improve
+classification over a pure CNN at identical architecture, data, budget, and seed?*
+At 12 seeds per arm the answer is **no detectable difference** — the measured
+advantage is inside the noise. What the hybrid does buy is a working decoder and a
+latent space alongside the classifier (see [Results](#results)).
 
 Post-training, dense layers are compressed with **Adaptive SVD (ASVD)** rank
 truncation, and the latent distribution is monitored with a **Reproducing Kernel
@@ -68,12 +67,10 @@ validation baseline.
 | Curated dataset `eurosat-rgb-v1.0.0` (27,000 patches; 18,900 / 4,050 / 4,050) | **Complete** |
 | Encoder, decoder, classification head, SSIM and multi-task losses | **Complete** |
 | SSIM boundary-policy benchmark (F-001) | **Complete** — `reports/ssim-boundary/` |
-| Multi-task training, three ablation arms, MLflow + Prometheus telemetry | **Complete** — 10 full-budget runs (4 seeds) |
+| Multi-task training, three ablation arms, MLflow + Prometheus telemetry | **Complete** — 26 full-budget runs (12 seeds per arm) |
 | Evidence bundle + multi-seed / per-class analysis (F-002, F-003) | **Complete** — `reports/ablation/evidence/` |
 | Self-bootstrapping experiment notebook | **Complete** — `notebooks/01_hybrid_autoencoder.ipynb` |
-| ASVD compression and MMD drift telemetry | Planned (see `references/README.md` for the lineage) |
-
-The phase roadmap is maintained locally and is not part of the published tree.
+| ASVD compression (M4 met at energy 0.90) and MMD drift telemetry | **Complete** — `reports/compression/`, `reports/telemetry/` |
 
 ---
 
@@ -89,7 +86,7 @@ space-encoder/
 │   └── processed/            curated arrays and split indices  (gitignored)
 ├── docker/                   ROCm runtime, compose stack, Prometheus, Grafana
 ├── notebooks/
-│   └── 01_hybrid_autoencoder.ipynb   evidence-first deliverable notebook
+│   └── 01_hybrid_autoencoder.ipynb   deliverable notebook
 ├── references/               links-only: upstream projects + curated reading
 │   ├── README.md
 │   └── ROCm/README.md
@@ -106,11 +103,11 @@ space-encoder/
 │   ├── evaluation.py         checkpoint reload + offline re-evaluation core
 │   ├── dataset/              ingestion, validation, splits, curation, DataModule
 │   ├── experiments/          bounded studies (SSIM boundary policy)
-│   ├── model/                encoder, decoder, heads, composite losses
-│   ├── telemetry/            MMD drift monitoring (Phase 4 home)
+│   ├── model/                encoder, decoder, heads, composite losses, ASVD
+│   ├── telemetry/            MMD drift monitoring and metric export
 │   ├── training/             LightningModule, runner, MLflow, job metrics
 │   └── utils/                logging, visualization, seeding
-└── tests/                    unit + integration suites (256 tests)
+└── tests/                    unit + integration suites (311 tests)
 ```
 
 ### Data Flow
@@ -200,7 +197,7 @@ cell. It never retrains models to produce results.
 | **Composite MSE + SSIM objective** | Structural term regularizes the bottleneck; masked-window policy (F-001) |
 | **Scheduled multi-task balancing** | λ(t) annealed `0.3 → 0.1` inside the `[0.1, 0.5]` band |
 | **Mixed precision discipline** | `bf16-mixed` on GPU, `32-true` on CPU; SSIM always float32 with autocast disabled |
-| **ASVD (planned)** | Adaptive SVD rank truncation of dense layers (lineage: wafer project) |
+| **ASVD rank truncation** | Adaptive SVD of dense layers with an energy target and a compression-gain guard |
 | **Deterministic evidence** | Float32 re-evaluation of stored checkpoints; per-precision metrics labelled (F-002) |
 
 ### MLOps & Services
@@ -222,7 +219,7 @@ cell. It never retrains models to produce results.
 | **SSIM (masked / valid policies)** | Structural similarity with explicit boundary semantics |
 | **Per-class F1 analysis** | Mechanism-sensitive endpoint (cropland complex, F-003) |
 | **t-SNE / PCA manifold projections** | Latent geometry comparison across arms |
-| **MMD two-sample test (planned)** | RKHS drift detection on L2-normalized embeddings |
+| **MMD two-sample test** | RKHS drift detection on L2-normalized embeddings, bootstrapped alarm threshold |
 
 ### Software Engineering
 
@@ -230,8 +227,8 @@ cell. It never retrains models to produce results.
 |---|---|
 | **Strict typing** | `mypy --strict` over `src/` and `scripts/` |
 | **Contract gate** | Pydantic configs, zero `#` comments, Google docstrings — AST-enforced |
-| **Test discipline** | 256 tests, 85% coverage floor (current: 90.9%), TDD for model and loss work |
-| **Scoped tooling** | ruff/mypy restricted to `src scripts tests notebooks` at every layer (AGENTS.md §4.5) |
+| **Test discipline** | 311 tests, 85% coverage floor (current: 90.7%), TDD for model and loss work |
+| **Scoped tooling** | ruff/mypy restricted to `src scripts tests notebooks` at every layer |
 | **Deterministic packaging** | `uv` with lockfile; reproducible evidence bundle from committed scripts |
 
 ---
@@ -310,10 +307,10 @@ uv run python scripts/validate_contracts.py
 uv run pytest --cov
 ```
 
-Current baseline: **256 tests passing, 90.9% coverage**, `mypy --strict` clean.
+Current baseline: **311 tests passing, 90.7% coverage**, `mypy --strict` clean.
 Ruff and mypy are scoped to this repository's code at every layer — CI, the
 gate script, `pyproject.toml`, and pre-commit all exclude dependency caches,
-`references/`, and generated artifacts (AGENTS.md §4.5).
+`references/`, and generated artifacts.
 
 `scripts/gate.ps1` is the blocking authority; `scripts/precommit.ps1 --all-files`
 is the fast staged-file subset.
@@ -347,7 +344,7 @@ into cosine decay, gradient clipping 1.0, batch 128, 30 epochs. Outputs:
 
 Inside the ROCm container the tracking URI is the compose service name
 (`MLFLOW_TRACKING_URI=http://mlflow:5000`); `localhost:5001` is the host-side
-URL. Design record: `.opencode/progress/phase3-report.md` (local).
+URL.
 
 ---
 
@@ -372,41 +369,48 @@ Total bundle size: 1.7 MB, tracked, deterministic, and idempotent to rebuild.
 
 ---
 
-## Experimental Findings
+## Results
 
-Consolidated research notes: [`findings.md`](findings.md).
+**The hypothesis is not confirmed.** At 12 seeds per arm the hybrid and the pure
+CNN are statistically indistinguishable on test macro-F1: mean paired advantage
++0.0009, 6/12 seeds positive, one-sided p = 0.21. The +0.0034 advantage visible in
+the first four seeds averaged −0.0003 across the eight newer ones. What survives is
+a clean negative: reconstruction regularization does not hurt classification at
+equal budget, and it hands you a working decoder and latent space alongside the
+classifier.
 
-### F-001 — SSIM boundary policy (Decided)
+| Model | Parameters | Test macro-F1 (float32) | Test micro-F1 |
+|---|---|---|---|
+| Pure CNN | 2,609,546 | 0.9464 ± 0.0028 (n=12) | 0.9488 |
+| Hybrid-CAE | 6,453,421 | 0.9474 ± 0.0024 (n=12) | 0.9498 |
+| ASVD Hybrid-CAE | 5,629,229 (−39% dense) | 0.9497 (single checkpoint) | 0.9523 |
 
-An 11×11 SSIM window cannot be centered on the outer five pixels of a 64×64
-patch; the policy choice changes what the loss penalizes.
+Five findings survived the work; the full discussion is in
+[`notebooks/01_hybrid_autoencoder.ipynb`](notebooks/01_hybrid_autoencoder.ipynb).
 
-| Policy | Map | Border-noise drop | Area-normalized border ratio |
-|---|:---:|---:|---:|
-| `valid` (crop) | 54×54 | 0.0792 | 0.275 |
-| `zero` (same-pad) | 64×64 | 0.1629 | 0.734 |
-| `masked` (support-normalized) | 64×64 | 0.2612 | 1.138 |
+| Finding | What it says |
+|---|---|
+| **F-001** SSIM boundary policy | The boundary policy, not the window size, decides what the loss penalizes at patch edges; the masked policy is the only one at area parity and is the training default |
+| **F-002** Evaluation precision | Identical weights differ by up to 0.0048 macro-F1 between bf16-mixed logging and float32 re-evaluation; every number here is labelled float32 |
+| **F-003** Mechanism | The 4-seed cropland trend (texture discrimination over boundary topology) weakened at 12 seeds; a hint, not a finding |
+| **F-004** ASVD compression | 39% of dense weights removed for +0.0002 macro-F1 at energy 0.90, milestone bar met, skipped layers recorded; no latency speedup claimed |
+| **F-005** MMD drift telemetry | Unbiased RKHS two-sample test with a bootstrapped threshold detects radiometric shifts and class-mix changes, and refuses baselines bound to another model state |
 
-`masked` is the only policy near area parity and is the loss default. Evidence:
-[`reports/ssim-boundary/findings.md`](reports/ssim-boundary/findings.md).
-
-### F-002 — Evaluation precision sets the comparability floor (Decided)
-
-Identical weights give macro-F1 differences up to **0.0048** between bf16-mixed
-logging and float32 re-evaluation; seed pairs can flip sign between regimes.
-All cross-arm comparisons in this repository are made within one labelled
-precision regime (float32 for analysis), and differences below ~0.005 must
-carry the noise budget: training nondeterminism ≤ 0.0015, cross-seed σ ≈ 0.002.
-
-### F-003 — The gain localizes to the cropland complex (Provisional)
-
-Mean per-class F1 delta (hybrid − Pure CNN, float32, 4 seeds):
-HerbaceousVegetation **+0.0084**, AnnualCrop **+0.0061** (4/4 seeds),
-PermanentCrop **+0.0042** — while the hypothesized River/Highway boundary pair
-stays at +0.0021 (2/4 seeds), inside the noise floor. The defensible mechanism
-is spatial-spectral detail retention (texture discrimination), not boundary
-topology. Verdict on the hypothesis: **directionally supported, not confirmed**
-(mean advantage +0.002 bf16 / +0.0034 float32; ≈ 12 seeds per arm to confirm).
+<p align="center">
+  <img src="reports/figures/notebook/macro_f1_distributions.png" width="47%">
+  <img src="reports/figures/notebook/per_class_delta.png" width="47%">
+</p>
+<p align="center">
+  <img src="reports/figures/notebook/patch_grid_hybrid.png" width="47%">
+  <img src="reports/figures/notebook/residuals_hybrid.png" width="47%">
+</p>
+<p align="center">
+  <img src="reports/figures/notebook/latent_tsne_hybrid.png" width="47%">
+  <img src="reports/figures/notebook/confusion_hybrid.png" width="47%">
+</p>
+<p align="center">
+  seed distributions · per-class deltas · reconstructions · residual maps · latent space · confusion
+</p>
 
 ---
 
@@ -425,6 +429,8 @@ Pinned image: `rocm/pytorch:rocm10.1.0_ubuntu24.04_py3.12_pytorch_release_2.14.0
 
 Wiring that is easy to get wrong:
 
+- every entry point enforces a 12 GiB per-process VRAM budget through
+  `eos.device.cap_vram`, so the desktop session keeps the rest of the card;
 - mount only `/dev/dxg`; never `/dev/kfd` or `/dev/dri` in WSL2;
 - bind `/usr/lib/wsl/lib:/usr/lib/wsl/lib:ro` and put it on `LD_LIBRARY_PATH`,
   otherwise `libdxcore.so` is not found and `torch.cuda.is_available()` is `False`;
@@ -447,7 +453,7 @@ sync → ruff format → ruff lint → contract gate → mypy strict → pytest 
 | Step | Command | Notes |
 |---|---|---|
 | Sync | `uv sync --frozen --all-groups` | Lockfile-pinned |
-| Ruff format | `uv run ruff format --check src scripts tests notebooks` | Path-scoped by design (AGENTS.md §4.5) |
+| Ruff format | `uv run ruff format --check src scripts tests notebooks` | Path-scoped by design |
 | Ruff lint | `uv run ruff check src scripts tests notebooks` | Same scope |
 | Contract gate | `uv run python scripts/validate_contracts.py` | Zero-`#`, docstrings, config contracts |
 | Mypy | `uv run mypy` | `files = ["src", "scripts"]` |
@@ -468,16 +474,8 @@ MLflow: parameters, per-epoch metrics, checkpoints, metrics.json
 Grafana ships three provisioned dashboards — **EOS Training**, **EOS Latent
 Drift**, **EOS Compression** — querying `eos_recon_mse`, `eos_val_macro_f1`,
 `eos_mmd_score`, `eos_mmd_alarm`, `eos_asvd_param_ratio`, `eos_asvd_f1_delta`.
-The MMD/ASVD series populate when Phase 4 lands.
-
----
-
-## Agent Skills
-
-The repository vendors 27 agent skills under `.opencode/skills/` (local-only),
-refreshed with `node scripts/vendor_skills.mjs`. They cover data engineering
-contracts and pipelines, PyTorch Lightning, MLflow, Pydantic, pytest/TDD,
-ruff/CI/docker conventions, research, and browser tooling.
+The drift and compression series come from `scripts/calibrate_mmd.py` and
+`scripts/run_asvd_benchmark.py`.
 
 ---
 
@@ -511,9 +509,10 @@ the pinned `pre-commit` in `.venv`. Conventions worth knowing before a PR:
 | Phase | Scope | State |
 |---|---|---|
 | 2 | Encoder, decoder, heads, MSE + SSIM losses | **Done** — exact `64 → 4 → 64` symmetry, SSIM float32 guard |
-| 3 | LightningModule, three ablation arms, MLflow | **Done** — 10 full-budget runs, 4 seeds, metrics of record |
-| 4 | ASVD compression, MMD calibration and drift monitoring | Planned — lineage in `references/README.md` |
+| 3 | LightningModule, three ablation arms, MLflow | **Done** — 26 full-budget runs, 12 seeds per arm, metrics of record |
+| 4 | ASVD compression, MMD calibration and drift monitoring | **Done** — M4 met at energy 0.90; drift demo + telemetry live |
 | 5 | Self-bootstrapping notebook + evidence bundle | **Done** — notebook renders committed evidence |
+| 6 | Convergence-driven retraining: longer budget, plateau LR, early stopping | **Next** |
 
 ASVD stays a bounded experiment: the hidden classifier projection is only ~8.3k
 parameters, so compression is reported over the dense parameter set and over the
@@ -527,7 +526,7 @@ whole model separately.
 |---|---|---|
 | `torch.cuda.is_available()` is `False` in the container | `libdxcore.so` not on the loader path | mount `/usr/lib/wsl/lib` read-only, export `LD_LIBRARY_PATH=/usr/lib/wsl/lib` |
 | DataLoader hangs with workers | shared memory exhausted | `ipc: host`, `shm_size: "16gb"`, or `num_workers=0` |
-| CI `ruff` reformats thousands of cache files | tool discovered dependency caches | scope commands to `src scripts tests notebooks`; cache dirs must be gitignored + in `extend-exclude` (AGENTS.md §4.5) |
+| CI `ruff` reformats thousands of cache files | tool discovered dependency caches | scope commands to `src scripts tests notebooks`; cache dirs must be gitignored + in `extend-exclude` |
 | MLflow artifact upload fails with `WinError 5` | container-local artifact root advertised | `--serve-artifacts` + `--artifacts-destination`, experiment with `mlflow-artifacts:/` |
 | `PermissionError: [WinError 5]` from pre-commit | hook store defaults outside the repo | `PRE_COMMIT_HOME=.cache/pre-commit`, hooks via `.githooks` |
 | Manifest fingerprint mismatch | manifest rebuilt with different contract or seed | rerun `eos-data split` after confirming the contract |

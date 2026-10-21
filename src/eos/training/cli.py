@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import cast
 
 from eos.config import ExperimentConfig, load_config
+from eos.device import cap_vram
 from eos.training.lightning_module import TRAINING_MODES, TrainingMode
 from eos.training.runner import SCHEMA_VERSION, budget_payload, run_experiment, write_json
 
@@ -185,6 +186,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     arguments = parser.parse_args(argv)
     if arguments.mode == "ablation" and arguments.resume is not None:
         parser.error("--resume is only supported for a single arm")
+    cap_vram()
     config = apply_overrides(
         load_config(arguments.config),
         arguments.seed,

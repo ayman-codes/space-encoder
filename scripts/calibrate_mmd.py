@@ -28,6 +28,7 @@ from torch import Tensor
 from eos.config import ASVDConfig, load_config
 from eos.dataset.contract import load_contract
 from eos.dataset.eurosat_datamodule import EuroSATDataModule
+from eos.device import cap_vram
 from eos.evaluation import collect_embeddings, load_module_from_checkpoint
 from eos.model.compression import SCOPE_PATHS, ASVDResult, factorize_module, state_signature
 from eos.telemetry.export import TelemetryPush, build_mmd_payload
@@ -143,6 +144,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             ASVD scope is unknown.
     """
     use_repo_scratch_space()
+    cap_vram()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     args = build_parser().parse_args(argv)
     config = load_config(args.config)

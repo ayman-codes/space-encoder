@@ -1,0 +1,28 @@
+{
+  "class_mix": {
+    "alarm": true,
+    "batch_size": 128,
+    "description": "single-class slice of the class-ordered validation loader",
+    "mmd2": 0.9292182922363281,
+    "threshold": 0.027946978665568167
+  },
+  "demo_shift": 0.25,
+  "generated_at": "2026-10-21T13:44:44+00:00",
+  "null": {
+    "alarm": false,
+    "batch_size": 128,
+    "description": "seeded random cross-class validation batch",
+    "mmd2": -0.009417533874511719,
+    "threshold": 0.027946978665568167
+  },
+  "schema_version": 1,
+  "shifted": {
+    "alarm": true,
+    "batch_size": 128,
+    "description": "same batch with +0.25 radiometric pixel shift",
+    "mmd2": 0.632044792175293,
+    "threshold": 0.027946978665568167
+  },
+  "stale_baseline_rejected": true,
+  "stale_message": "baseline is stale for this model state; recalibrate after any ASVD pass"
+}

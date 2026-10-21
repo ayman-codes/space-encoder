@@ -150,17 +150,17 @@
         },
         "latency": {
           "batch_size": 128,
-          "max_ms": 317.07689999893773,
-          "median_ms": 265.3306000029261,
-          "min_ms": 245.28819999977713,
+          "max_ms": 105.08241299976362,
+          "median_ms": 89.9881065001864,
+          "min_ms": 86.20996500030742,
           "passes": 10
         },
         "params": 6453421,
         "reconstruction": {
-          "mse": 0.00630072709464242,
+          "mse": 0.006300727127756111,
           "sample_count": 4050,
-          "ssim_masked": 0.6084867776176076,
-          "ssim_valid": 0.6043649592811678
+          "ssim_masked": 0.6084868079055974,
+          "ssim_valid": 0.6043649674933633
         }
       },
       "checkpoint": ".cache/evidence/5695597187874303b5540b30bd5d0a7a/hybrid-29.ckpt",
@@ -312,14 +312,14 @@
           "dense_reduction": 0.0,
           "latency": {
             "batch_size": 128,
-            "max_ms": 239.6283999987645,
-            "median_ms": 215.6026499978907,
-            "min_ms": 203.44540000223788,
+            "max_ms": 95.8458889999747,
+            "median_ms": 81.99420100027055,
+            "min_ms": 75.8148800005074,
             "passes": 10
           },
           "layers": [
             {
-              "energy": 0.9031439423561096,
+              "energy": 0.9031440615653992,
               "gain": 1.0940170940170941,
               "name": "classifier.hidden",
               "params_after": 8256,
@@ -342,10 +342,10 @@
           "model_reduction": 0.0,
           "preserve_energy": 0.9,
           "reconstruction": {
-            "mse": 0.00630072709464242,
+            "mse": 0.006300727127756111,
             "sample_count": 4050,
-            "ssim_masked": 0.6084867776176076,
-            "ssim_valid": 0.6043649592811678
+            "ssim_masked": 0.6084868079055974,
+            "ssim_valid": 0.6043649674933633
           },
           "scope": "classifier"
         },
@@ -494,14 +494,14 @@
           "dense_reduction": 0.0,
           "latency": {
             "batch_size": 128,
-            "max_ms": 271.1609000034514,
-            "median_ms": 238.65479999949457,
-            "min_ms": 188.41970000357833,
+            "max_ms": 88.77002700046432,
+            "median_ms": 62.75558599963915,
+            "min_ms": 59.365287000218814,
             "passes": 10
           },
           "layers": [
             {
-              "energy": 0.9504426717758179,
+              "energy": 0.9504427313804626,
               "gain": 0.9078014184397163,
               "name": "classifier.hidden",
               "params_after": 8256,
@@ -524,10 +524,10 @@
           "model_reduction": 0.0,
           "preserve_energy": 0.95,
           "reconstruction": {
-            "mse": 0.00630072709464242,
+            "mse": 0.006300727127756111,
             "sample_count": 4050,
-            "ssim_masked": 0.6084867776176076,
-            "ssim_valid": 0.6043649592811678
+            "ssim_masked": 0.6084868079055974,
+            "ssim_valid": 0.6043649674933633
           },
           "scope": "classifier"
         },
@@ -676,9 +676,9 @@
           "dense_reduction": 0.39145236792510185,
           "latency": {
             "batch_size": 128,
-            "max_ms": 378.27780000225175,
-            "median_ms": 253.6106999978074,
-            "min_ms": 232.71540000132518,
+            "max_ms": 105.58816399952775,
+            "median_ms": 85.59799249997013,
+            "min_ms": 77.28796999981569,
             "passes": 10
           },
           "layers": [
@@ -697,7 +697,7 @@
               "skipped": false
             },
             {
-              "energy": 0.90157550573349,
+              "energy": 0.9015754461288452,
               "gain": 2.6256410256410256,
               "name": "encoder.projection",
               "params_after": 399488,
@@ -720,10 +720,10 @@
           "model_reduction": 0.12771396752203212,
           "preserve_energy": 0.9,
           "reconstruction": {
-            "mse": 0.00875156146508676,
+            "mse": 0.008751562169059314,
             "sample_count": 4050,
-            "ssim_masked": 0.591051137653398,
-            "ssim_valid": 0.5841171959888788
+            "ssim_masked": 0.5910511881333811,
+            "ssim_valid": 0.5841172063792193
           },
           "scope": "bottleneck"
         },
@@ -872,14 +872,14 @@
           "dense_reduction": 0.18189555596084872,
           "latency": {
             "batch_size": 128,
-            "max_ms": 241.97560000175145,
-            "median_ms": 208.48645000296528,
-            "min_ms": 199.61530000000494,
+            "max_ms": 90.45074299956468,
+            "median_ms": 77.33819549957843,
+            "min_ms": 61.9872490005946,
             "passes": 10
           },
           "layers": [
             {
-              "energy": 0.9513859152793884,
+              "energy": 0.9513859748840332,
               "gain": 1.0959197324414716,
               "name": "decoder.projection",
               "params_after": 1056768,
@@ -893,7 +893,7 @@
               "skipped": true
             },
             {
-              "energy": 0.9500099420547485,
+              "energy": 0.9500098824501038,
               "gain": 1.5753846153846154,
               "name": "encoder.projection",
               "params_after": 665728,
@@ -916,10 +916,10 @@
           "model_reduction": 0.059344648365572295,
           "preserve_energy": 0.95,
           "reconstruction": {
-            "mse": 0.006440008775074295,
+            "mse": 0.006440007919024047,
             "sample_count": 4050,
-            "ssim_masked": 0.6074803360303243,
-            "ssim_valid": 0.6031659501570242
+            "ssim_masked": 0.6074803524547153,
+            "ssim_valid": 0.6031659576922287
           },
           "scope": "bottleneck"
         },
@@ -1068,14 +1068,14 @@
           "dense_reduction": 0.3899233960093257,
           "latency": {
             "batch_size": 128,
-            "max_ms": 246.02340000274125,
-            "median_ms": 204.84160000341944,
-            "min_ms": 192.38269999914337,
+            "max_ms": 100.7559930003481,
+            "median_ms": 85.80696699982582,
+            "min_ms": 60.560652000276605,
             "passes": 10
           },
           "layers": [
             {
-              "energy": 0.9031439423561096,
+              "energy": 0.9031440615653992,
               "gain": 1.0940170940170941,
               "name": "classifier.hidden",
               "params_after": 8256,
@@ -1103,7 +1103,7 @@
               "skipped": false
             },
             {
-              "energy": 0.90157550573349,
+              "energy": 0.9015754461288452,
               "gain": 2.6256410256410256,
               "name": "encoder.projection",
               "params_after": 399488,
@@ -1126,10 +1126,10 @@
           "model_reduction": 0.12771396752203212,
           "preserve_energy": 0.9,
           "reconstruction": {
-            "mse": 0.00875156146508676,
+            "mse": 0.008751562169059314,
             "sample_count": 4050,
-            "ssim_masked": 0.591051137653398,
-            "ssim_valid": 0.5841171959888788
+            "ssim_masked": 0.5910511881333811,
+            "ssim_valid": 0.5841172063792193
           },
           "scope": "all_intermediate"
         },
@@ -1278,14 +1278,14 @@
           "dense_reduction": 0.18118509098616287,
           "latency": {
             "batch_size": 128,
-            "max_ms": 242.11750000540633,
-            "median_ms": 223.57054999883985,
-            "min_ms": 197.71909999690251,
+            "max_ms": 93.67964000011852,
+            "median_ms": 83.84632099978262,
+            "min_ms": 70.44902500001626,
             "passes": 10
           },
           "layers": [
             {
-              "energy": 0.9504426717758179,
+              "energy": 0.9504427313804626,
               "gain": 0.9078014184397163,
               "name": "classifier.hidden",
               "params_after": 8256,
@@ -1299,7 +1299,7 @@
               "skipped": true
             },
             {
-              "energy": 0.9513859152793884,
+              "energy": 0.9513859748840332,
               "gain": 1.0959197324414716,
               "name": "decoder.projection",
               "params_after": 1056768,
@@ -1313,7 +1313,7 @@
               "skipped": true
             },
             {
-              "energy": 0.9500099420547485,
+              "energy": 0.9500098824501038,
               "gain": 1.5753846153846154,
               "name": "encoder.projection",
               "params_after": 665728,
@@ -1336,10 +1336,10 @@
           "model_reduction": 0.059344648365572295,
           "preserve_energy": 0.95,
           "reconstruction": {
-            "mse": 0.006440008775074295,
+            "mse": 0.006440007919024047,
             "sample_count": 4050,
-            "ssim_masked": 0.6074803360303243,
-            "ssim_valid": 0.6031659501570242
+            "ssim_masked": 0.6074803524547153,
+            "ssim_valid": 0.6031659576922287
           },
           "scope": "all_intermediate"
         }
@@ -1488,9 +1488,9 @@
         },
         "latency": {
           "batch_size": 128,
-          "max_ms": 66.50490000174614,
-          "median_ms": 57.71140000069863,
-          "min_ms": 49.01939999399474,
+          "max_ms": 75.86365200040746,
+          "median_ms": 54.38626350041886,
+          "min_ms": 44.767445000616135,
           "passes": 10
         },
         "params": 2609546,
@@ -1645,9 +1645,9 @@
           "dense_reduction": 0.0,
           "latency": {
             "batch_size": 128,
-            "max_ms": 61.19980000221403,
-            "median_ms": 51.25034999946365,
-            "min_ms": 46.42089999833843,
+            "max_ms": 86.01270899998781,
+            "median_ms": 63.582662000044365,
+            "min_ms": 45.36181100047543,
             "passes": 10
           },
           "layers": [
@@ -1822,14 +1822,14 @@
           "dense_reduction": 0.0,
           "latency": {
             "batch_size": 128,
-            "max_ms": 97.62789999513188,
-            "median_ms": 82.47444999869913,
-            "min_ms": 68.06950000463985,
+            "max_ms": 76.43592099975649,
+            "median_ms": 62.022933500429644,
+            "min_ms": 52.263042999584286,
             "passes": 10
           },
           "layers": [
             {
-              "energy": 0.9533658623695374,
+              "energy": 0.9533659219741821,
               "gain": 0.8888888888888888,
               "name": "classifier.hidden",
               "params_after": 8256,
@@ -1999,14 +1999,14 @@
           "dense_reduction": 0.6269986573904553,
           "latency": {
             "batch_size": 128,
-            "max_ms": 63.45889999647625,
-            "median_ms": 55.681949997961055,
-            "min_ms": 51.386300001468044,
+            "max_ms": 93.22316700036026,
+            "median_ms": 72.85512400039806,
+            "min_ms": 53.205275000436814,
             "passes": 10
           },
           "layers": [
             {
-              "energy": 0.9014632105827332,
+              "energy": 0.9014630317687988,
               "gain": 2.681505728314239,
               "name": "encoder.projection",
               "params_after": 391168,
@@ -2176,14 +2176,14 @@
           "dense_reduction": 0.36518979616746006,
           "latency": {
             "batch_size": 128,
-            "max_ms": 64.78910000441829,
-            "median_ms": 57.725300001038704,
-            "min_ms": 50.180999998701736,
+            "max_ms": 79.29720599986467,
+            "median_ms": 57.06625750008243,
+            "min_ms": 46.71842000061588,
             "passes": 10
           },
           "layers": [
             {
-              "energy": 0.9505589008331299,
+              "energy": 0.9505586624145508,
               "gain": 1.5753846153846154,
               "name": "encoder.projection",
               "params_after": 665728,
@@ -2353,9 +2353,9 @@
           "dense_reduction": 0.6221011201937632,
           "latency": {
             "batch_size": 128,
-            "max_ms": 72.60910000331933,
-            "median_ms": 57.33384999984992,
-            "min_ms": 51.857800004654564,
+            "max_ms": 74.06021399947349,
+            "median_ms": 61.16943449978862,
+            "min_ms": 57.41334199956327,
             "passes": 10
           },
           "layers": [
@@ -2374,7 +2374,7 @@
               "skipped": true
             },
             {
-              "energy": 0.9014632105827332,
+              "energy": 0.9014630317687988,
               "gain": 2.681505728314239,
               "name": "encoder.projection",
               "params_after": 391168,
@@ -2544,14 +2544,14 @@
           "dense_reduction": 0.36233726914925823,
           "latency": {
             "batch_size": 128,
-            "max_ms": 69.04770000255667,
-            "median_ms": 54.57045000002836,
-            "min_ms": 51.0530999963521,
+            "max_ms": 68.32221599961485,
+            "median_ms": 60.14675999995234,
+            "min_ms": 47.43352900004538,
             "passes": 10
           },
           "layers": [
             {
-              "energy": 0.9533658623695374,
+              "energy": 0.9533659219741821,
               "gain": 0.8888888888888888,
               "name": "classifier.hidden",
               "params_after": 8256,
@@ -2565,7 +2565,7 @@
               "skipped": true
             },
             {
-              "energy": 0.9505589008331299,
+              "energy": 0.9505586624145508,
               "gain": 1.5753846153846154,
               "name": "encoder.projection",
               "params_after": 665728,
@@ -2597,17 +2597,17 @@
         "classification": null,
         "latency": {
           "batch_size": 128,
-          "max_ms": 255.65990000177408,
-          "median_ms": 224.96899999896414,
-          "min_ms": 195.2155999970273,
+          "max_ms": 92.53112799979135,
+          "median_ms": 85.42367149993879,
+          "min_ms": 69.45921199985605,
           "passes": 10
         },
         "params": 6444515,
         "reconstruction": {
-          "mse": 0.0025487044928863708,
+          "mse": 0.002548704494419412,
           "sample_count": 4050,
-          "ssim_masked": 0.7490037760616821,
-          "ssim_valid": 0.754002973827315
+          "ssim_masked": 0.7490037479518372,
+          "ssim_valid": 0.7540029532526746
         }
       },
       "checkpoint": ".cache/evidence/e1d1f80ad4054afda071a765d254dfb9/autoencoder-17.ckpt",
@@ -2621,9 +2621,9 @@
           "dense_reduction": 0.0,
           "latency": {
             "batch_size": 128,
-            "max_ms": 312.03340000502067,
-            "median_ms": 245.82504999489174,
-            "min_ms": 230.94480000145268,
+            "max_ms": 97.46138499940571,
+            "median_ms": 95.47957700033294,
+            "min_ms": 74.3081059999895,
             "passes": 10
           },
           "layers": [],
@@ -2636,10 +2636,10 @@
           "model_reduction": 0.0,
           "preserve_energy": 0.9,
           "reconstruction": {
-            "mse": 0.0025487044928863708,
+            "mse": 0.002548704494419412,
             "sample_count": 4050,
-            "ssim_masked": 0.7490037760616821,
-            "ssim_valid": 0.754002973827315
+            "ssim_masked": 0.7490037479518372,
+            "ssim_valid": 0.7540029532526746
           },
           "scope": "classifier"
         },
@@ -2650,9 +2650,9 @@
           "dense_reduction": 0.0,
           "latency": {
             "batch_size": 128,
-            "max_ms": 253.57269999949494,
-            "median_ms": 223.4855999959109,
-            "min_ms": 188.52399999741465,
+            "max_ms": 104.79831400061812,
+            "median_ms": 86.34665550016507,
+            "min_ms": 67.2212089993991,
             "passes": 10
           },
           "layers": [],
@@ -2665,10 +2665,10 @@
           "model_reduction": 0.0,
           "preserve_energy": 0.95,
           "reconstruction": {
-            "mse": 0.0025487044928863708,
+            "mse": 0.002548704494419412,
             "sample_count": 4050,
-            "ssim_masked": 0.7490037760616821,
-            "ssim_valid": 0.754002973827315
+            "ssim_masked": 0.7490037479518372,
+            "ssim_valid": 0.7540029532526746
           },
           "scope": "classifier"
         },
@@ -2679,14 +2679,14 @@
           "dense_reduction": 0.12274302389202996,
           "latency": {
             "batch_size": 128,
-            "max_ms": 306.5377000020817,
-            "median_ms": 278.2689499981643,
-            "min_ms": 223.13719999510795,
+            "max_ms": 93.98842600057833,
+            "median_ms": 91.03244150037426,
+            "min_ms": 66.87303899980179,
             "passes": 10
           },
           "layers": [
             {
-              "energy": 0.9034401178359985,
+              "energy": 0.9034400582313538,
               "gain": 1.1252747252747253,
               "name": "decoder.projection",
               "params_after": 940032,
@@ -2723,10 +2723,10 @@
           "model_reduction": 0.04010107820371278,
           "preserve_energy": 0.9,
           "reconstruction": {
-            "mse": 0.010743419093850218,
+            "mse": 0.01074342223351875,
             "sample_count": 4050,
-            "ssim_masked": 0.6474216972162694,
-            "ssim_valid": 0.6248294603088755
+            "ssim_masked": 0.6474216521522145,
+            "ssim_valid": 0.6248293707105849
           },
           "scope": "bottleneck"
         },
@@ -2737,14 +2737,14 @@
           "dense_reduction": 0.0,
           "latency": {
             "batch_size": 128,
-            "max_ms": 292.42810000141617,
-            "median_ms": 267.3184500017669,
-            "min_ms": 231.4115999979549,
+            "max_ms": 89.30312300071819,
+            "median_ms": 78.11318399990341,
+            "min_ms": 59.40789499982202,
             "passes": 10
           },
           "layers": [
             {
-              "energy": 0.9532756805419922,
+              "energy": 0.9532756209373474,
               "gain": 1.0502564102564103,
               "name": "decoder.projection",
               "params_after": 1056768,
@@ -2781,10 +2781,10 @@
           "model_reduction": 0.0,
           "preserve_energy": 0.95,
           "reconstruction": {
-            "mse": 0.0025487044928863708,
+            "mse": 0.002548704494419412,
             "sample_count": 4050,
-            "ssim_masked": 0.7490037760616821,
-            "ssim_valid": 0.754002973827315
+            "ssim_masked": 0.7490037479518372,
+            "ssim_valid": 0.7540029532526746
           },
           "scope": "bottleneck"
         },
@@ -2795,14 +2795,14 @@
           "dense_reduction": 0.12274302389202996,
           "latency": {
             "batch_size": 128,
-            "max_ms": 317.9600999937975,
-            "median_ms": 280.5754499968316,
-            "min_ms": 251.9051999988733,
+            "max_ms": 89.92518299965013,
+            "median_ms": 63.41644699978133,
+            "min_ms": 60.11175099956745,
             "passes": 10
           },
           "layers": [
             {
-              "energy": 0.9034401178359985,
+              "energy": 0.9034400582313538,
               "gain": 1.1252747252747253,
               "name": "decoder.projection",
               "params_after": 940032,
@@ -2839,10 +2839,10 @@
           "model_reduction": 0.04010107820371278,
           "preserve_energy": 0.9,
           "reconstruction": {
-            "mse": 0.010743419093850218,
+            "mse": 0.01074342223351875,
             "sample_count": 4050,
-            "ssim_masked": 0.6474216972162694,
-            "ssim_valid": 0.6248294603088755
+            "ssim_masked": 0.6474216521522145,
+            "ssim_valid": 0.6248293707105849
           },
           "scope": "all_intermediate"
         },
@@ -2853,14 +2853,14 @@
           "dense_reduction": 0.0,
           "latency": {
             "batch_size": 128,
-            "max_ms": 343.70599999965634,
-            "median_ms": 279.85714999886113,
-            "min_ms": 244.15729999600444,
+            "max_ms": 115.26436100029969,
+            "median_ms": 88.48276850039838,
+            "min_ms": 76.86690799982898,
             "passes": 10
           },
           "layers": [
             {
-              "energy": 0.9532756805419922,
+              "energy": 0.9532756209373474,
               "gain": 1.0502564102564103,
               "name": "decoder.projection",
               "params_after": 1056768,
@@ -2897,10 +2897,10 @@
           "model_reduction": 0.0,
           "preserve_energy": 0.95,
           "reconstruction": {
-            "mse": 0.0025487044928863708,
+            "mse": 0.002548704494419412,
             "sample_count": 4050,
-            "ssim_masked": 0.7490037760616821,
-            "ssim_valid": 0.754002973827315
+            "ssim_masked": 0.7490037479518372,
+            "ssim_valid": 0.7540029532526746
           },
           "scope": "all_intermediate"
         }
@@ -2911,10 +2911,10 @@
     "manifest_sha256": "f7ccc0bccafc3b9679c4ef2ac934e0df7d2710628119cf6171784561f9754570",
     "version": "eurosat-rgb-v1.0.0"
   },
-  "generated_at": "2026-10-20T21:27:38+00:00",
+  "generated_at": "2026-10-21T13:17:42+00:00",
   "latency": {
     "batch_size": 128,
-    "device": "auto",
+    "device": "cuda",
     "timed_passes": 10,
     "warmup_passes": 3
   },

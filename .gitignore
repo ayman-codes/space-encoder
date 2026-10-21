@@ -50,6 +50,7 @@ Thumbs.db
 .cache/
 pytest-of-*/
 torchinductor_*/
+/findings.md
 
 # --- Hard restriction: vendored reference project artifacts ------------------
 references/**/.venv/

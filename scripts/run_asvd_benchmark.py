@@ -28,6 +28,7 @@ from torch import Tensor, nn
 from eos.config import ASVDConfig, load_config
 from eos.dataset.contract import load_contract
 from eos.dataset.eurosat_datamodule import EuroSATDataModule
+from eos.device import cap_vram
 from eos.evaluation import (
     ClassificationEvaluation,
     ReconstructionEvaluation,
@@ -122,6 +123,10 @@ def measure_latency(
 ) -> LatencyStats:
     """Measure forward-pass latency for one model on one batch.
 
+    The batch is moved to the device of the model's parameters, and CUDA
+    dispatch is synchronized around every timed pass so each sample measures
+    real completion time rather than kernel launch time.
+
     Args:
         model (nn.Module): Model evaluated in inference mode.
         batch (Tensor): Input batch of shape ``(B, 3, 64, 64)``.
@@ -138,14 +143,21 @@ def measure_latency(
         raise ValueError("at least one timed pass is required")
     if batch.shape[0] == 0:
         raise ValueError("the latency batch must not be empty")
+    parameter = next(model.parameters())
+    device = parameter.device
+    batch = batch.to(device)
     model.eval()
     samples: list[float] = []
     with torch.inference_mode():
         for _ in range(warmup):
             model(batch)
         for _ in range(passes):
+            if device.type == "cuda":
+                torch.cuda.synchronize(device)
             start = time.perf_counter()
             model(batch)
+            if device.type == "cuda":
+                torch.cuda.synchronize(device)
             samples.append((time.perf_counter() - start) * 1000.0)
     samples.sort()
     return LatencyStats(
@@ -410,6 +422,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         ValueError: If the datamodule produces no manifest or a scope is unknown.
     """
     use_repo_scratch_space()
+    cap_vram()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     args = build_parser().parse_args(argv)
     config = load_config(args.config)

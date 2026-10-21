@@ -23,7 +23,7 @@
     "version": "eurosat-rgb-v1.0.0"
   },
   "fingerprint": "7b33caa7077b63dbc435c0e36ee7f8e15114ea11e3c9be2d32e9452d96cc2727",
-  "generated_at": "2026-10-20T21:33:00+00:00",
+  "generated_at": "2026-10-21T13:44:13+00:00",
   "live_batch_size": 128,
   "mmd": {
     "bandwidths": [

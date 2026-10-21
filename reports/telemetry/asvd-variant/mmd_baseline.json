@@ -1,0 +1,46 @@
+{
+  "artifacts": [
+    "mmd_reference.npz"
+  ],
+  "asvd_state": "decoder.projection:105:0;encoder.projection:48:0",
+  "checkpoint": ".cache/evidence/5695597187874303b5540b30bd5d0a7a/hybrid-29.ckpt",
+  "checkpoint_sha256": "0963c5d58ad0e5574a7361d5cd191d79598f06439d4f1b8632c75372189a9dad",
+  "class_names": [
+    "AnnualCrop",
+    "Forest",
+    "HerbaceousVegetation",
+    "Highway",
+    "Industrial",
+    "Pasture",
+    "PermanentCrop",
+    "Residential",
+    "River",
+    "SeaLake"
+  ],
+  "collected_embeddings": 4050,
+  "dataset": {
+    "manifest_sha256": "f7ccc0bccafc3b9679c4ef2ac934e0df7d2710628119cf6171784561f9754570",
+    "version": "eurosat-rgb-v1.0.0"
+  },
+  "fingerprint": "cea808f6cfcb12c282dedec298b79986b2c1b76eeb9ad0b4a9836a97cb6597d8",
+  "generated_at": "2026-10-21T13:44:43+00:00",
+  "live_batch_size": 128,
+  "mmd": {
+    "bandwidths": [
+      0.3517407774925232,
+      0.7034815549850464,
+      1.4069631099700928,
+      2.8139262199401855,
+      5.627852439880371
+    ],
+    "batch_size": 128,
+    "draws": 500,
+    "fingerprint": "cea808f6cfcb12c282dedec298b79986b2c1b76eeb9ad0b4a9836a97cb6597d8",
+    "mu": 3.369045225554146e-05,
+    "reference_count": 500,
+    "seed": 42,
+    "sigma": 0.009304429404437542,
+    "threshold": 0.027946978665568167
+  },
+  "schema_version": 1
+}
