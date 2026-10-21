@@ -30,6 +30,7 @@ from eos.config import ModelConfig, TrainConfig
 from eos.model.hybrid_cae import ConvAE, HybridCAE, ModelOutput, PureCNN
 from eos.model.losses import MultiTaskLoss, SSIMLoss
 from eos.training.lambda_schedule import ReconstructionLambdaSchedule
+from eos.training.lr_schedules import WarmupReduceOnPlateau
 
 TrainingMode = Literal["hybrid", "classifier", "autoencoder"]
 
@@ -40,6 +41,66 @@ WARMUP_START_FACTOR = 0.1
 
 MINIMUM_LR_FACTOR = 0.01
 """Cosine floor as a fraction of the peak learning rate."""
+
+MonitorDirection = Literal["min", "max"]
+"""Optimization direction of a monitored validation metric."""
+
+
+def checkpoint_monitor(mode: TrainingMode) -> tuple[str, MonitorDirection]:
+    """Return the monitored metric and optimisation direction for an arm.
+
+    The checkpoint callback must monitor a metric the arm actually produces:
+    the classifier and hybrid arms monitor validation macro-F1, and the
+    autoencoder arm has no classifier so it monitors validation reconstruction
+    MSE instead.
+
+    Args:
+        mode (TrainingMode): Ablation arm selector.
+
+    Returns:
+        tuple[str, MonitorDirection]: Metric name and ``"max"`` or ``"min"``.
+    """
+    if mode == "autoencoder":
+        return "val/recon_mse", "min"
+    return "val/macro_f1", "max"
+
+
+def monitor_name(mode: TrainingMode, config: TrainConfig) -> str:
+    """Return the metric name governing checkpointing, stopping, and scheduling.
+
+    When the configured smoothing window exceeds one, a trailing-mean callback
+    publishes the smoothed variant of the raw metric and every control surface
+    observes that name instead, so selection and stopping act on a signal the
+    epoch-level noise cannot dominate.
+
+    Args:
+        mode (TrainingMode): Ablation arm selector.
+        config (TrainConfig): Trainer configuration carrying the smoothing
+            window.
+
+    Returns:
+        str: Monitored metric name, suffixed with ``_smooth`` when a trailing
+        mean is published.
+    """
+    monitor, _ = checkpoint_monitor(mode)
+    if config.monitor_smoothing_window <= 1:
+        return monitor
+    return f"{monitor}_smooth"
+
+
+def stopping_min_delta(mode: TrainingMode, config: TrainConfig) -> float:
+    """Return the improvement bound that resets the early-stopping counter.
+
+    Args:
+        mode (TrainingMode): Ablation arm selector.
+        config (TrainConfig): Trainer configuration with the per-arm bounds.
+
+    Returns:
+        float: Absolute minimum improvement on the arm's monitored metric.
+    """
+    if mode == "autoencoder":
+        return config.early_stopping_min_delta_recon
+    return config.early_stopping_min_delta
 
 
 def build_model(mode: TrainingMode, config: ModelConfig) -> HybridCAE | PureCNN | ConvAE:
@@ -489,19 +550,48 @@ class EOSTrainingModule(LightningModule):
         self._evaluation_objective(batch, "test")
 
     def configure_optimizers(self) -> OptimizerLRSchedulerConfig:
-        """Build AdamW with linear warmup followed by cosine decay.
+        """Build AdamW with warmup and the configured decay regime.
+
+        ``cosine`` reproduces the fixed budget schedule: linear warmup chained
+        into cosine annealing over the epoch budget. ``plateau`` is the
+        convergence regime: the same warmup, then the learning rate holds at its
+        peak while the monitored validation metric improves and decays once the
+        metric stalls, so the optimizer keeps learning until the metric is flat.
 
         Returns:
             OptimizerLRSchedulerConfig: Optimizer and epoch-stepped scheduler.
+            The plateau variant declares the monitored metric, which is the
+            smoothed name published by the trailing-mean callback.
 
         Raises:
-            ValueError: If the configured schedule leaves no decay interval.
+            ValueError: If the cosine schedule leaves no decay interval.
         """
         optimizer = AdamW(
             self.parameters(),
             lr=self.train_config.learning_rate,
             weight_decay=self.train_config.weight_decay,
         )
+        if self.train_config.lr_scheduler == "plateau":
+            _, direction = checkpoint_monitor(self.mode)
+            plateau = WarmupReduceOnPlateau(
+                optimizer,
+                warmup_epochs=self.train_config.warmup_epochs,
+                warmup_start_factor=WARMUP_START_FACTOR,
+                mode=direction,
+                factor=self.train_config.plateau_factor,
+                patience=self.train_config.plateau_patience,
+                min_lr=self.train_config.plateau_min_lr,
+            )
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": plateau,
+                    "interval": "epoch",
+                    "frequency": 1,
+                    "monitor": monitor_name(self.mode, self.train_config),
+                    "strict": True,
+                },
+            }
         total_epochs = self.train_config.max_epochs
         warmup_epochs = self.train_config.warmup_epochs
         decay_epochs = total_epochs - warmup_epochs

@@ -319,28 +319,50 @@ is the fast staged-file subset.
 
 ## Training
 
-`eos-train` exposes the three ablation arms and an aggregate command. All arms
-share one `LightningModule`, one optimizer schedule, one metric contract, and
-one budget; only the objective differs.
+`eos-train` exposes the three ablation arms, an aggregate ablation command, and
+a resumable multi-seed campaign. All arms share one `LightningModule`, one
+optimizer schedule, one metric contract, one stopping rule, and one budget; only
+the objective differs.
 
 ```bash
 uv run eos-train hybrid --fast-dev-run
 uv run eos-train classifier --config configs/base.yaml
 uv run eos-train hybrid --max-epochs 1
-uv run eos-train hybrid --resume checkpoints/last.ckpt
-uv run eos-train ablation --fast-dev-run
+uv run eos-train hybrid --resume checkpoints/hybrid-seed42/last.ckpt
+uv run eos-train ablation
+uv run eos-train campaign --seeds 42 7 123 2024
+uv run eos-train campaign --assemble-only
 ```
 
 | Arm | Model | Objective | Checkpoint monitor |
 |---|---|---|---|
-| `hybrid` | `HybridCAE` | `CE + λ(t)·(α·MSE + (1−α)(1−SSIM))` | `val/macro_f1` (max) |
-| `classifier` | `PureCNN` | `CE` | `val/macro_f1` (max) |
-| `autoencoder` | `ConvAE` | `α·MSE + (1−α)(1−SSIM)` | `val/recon_mse` (min) |
+| `hybrid` | `HybridCAE` | `CE + λ(t)·(α·MSE + (1−α)(1−SSIM))` | `val/macro_f1_smooth` (max) |
+| `classifier` | `PureCNN` | `CE` | `val/macro_f1_smooth` (max) |
+| `autoencoder` | `ConvAE` | `α·MSE + (1−α)(1−SSIM)` | `val/recon_mse_smooth` (min) |
 
-Full-budget contract: AdamW (lr 1e-3, weight decay 1e-4), 2-epoch linear warmup
-into cosine decay, gradient clipping 1.0, batch 128, 30 epochs. Outputs:
-`checkpoints/<arm>-NN.ckpt`, `reports/training/<arm>/metrics.json` (gitignored),
-`reports/ablation/ablation.json` (tracked).
+Full-budget contract (the convergence regime of `configs/base.yaml`): AdamW
+(lr 1e-3, weight decay 1e-4), 2-epoch linear warmup into `ReduceLROnPlateau`
+(factor 0.5, patience 5, floor 1e-6), gradient clipping 1.0, batch 128, and a
+100-epoch ceiling that `EarlyStopping` (patience 12, `min_delta` 0.001 on
+macro-F1 / 1e-5 on reconstruction MSE) ends early once the monitored metric
+stops moving. The monitored metric is a 3-epoch trailing mean, because the raw
+validation curve wobbles by ~0.03–0.14 macro-F1 between adjacent epochs and
+would otherwise fire the stopping rule on training noise. λ(t) anneals 0.3 →
+0.1 across the declared ceiling, so a run that stops early keeps more
+reconstruction pressure than the old fixed 30-epoch schedule. Each arm records
+the epochs it actually consumed.
+
+**Every run is resumable.** Each (arm, seed) job owns an isolated workspace —
+`checkpoints/<arm>-seed<seed>/` (checkpoints, `last.ckpt`, tracking run id) and
+`reports/training/<arm>/seed<seed>/metrics.json` — so seeds never overwrite each
+other and an interrupted job has exactly one continuation point. Re-running
+`eos-train campaign` with the same grid skips completed jobs, resumes
+interrupted ones from `last.ckpt` into the same MLflow run (one continuous
+per-epoch metric history), and trains only what is missing; `--force` retrains
+from scratch, `--assemble-only` writes the evidence documents without training.
+Outputs: `reports/ablation/campaign.json` (job ledger with budget parity and
+epochs consumed), `reports/ablation/ablation.json` (three-arm record for the
+seed of record).
 
 Inside the ROCm container the tracking URI is the compose service name
 (`MLFLOW_TRACKING_URI=http://mlflow:5000`); `localhost:5001` is the host-side
@@ -512,7 +534,7 @@ the pinned `pre-commit` in `.venv`. Conventions worth knowing before a PR:
 | 3 | LightningModule, three ablation arms, MLflow | **Done** — 26 full-budget runs, 12 seeds per arm, metrics of record |
 | 4 | ASVD compression, MMD calibration and drift monitoring | **Done** — M4 met at energy 0.90; drift demo + telemetry live |
 | 5 | Self-bootstrapping notebook + evidence bundle | **Done** — notebook renders committed evidence |
-| 6 | Convergence-driven retraining: longer budget, plateau LR, early stopping | **Next** |
+| 6 | Convergence-driven retraining: longer budget, plateau LR, early stopping | **In progress** — regime and resumable campaign shipped, campaign runs pending |
 
 ASVD stays a bounded experiment: the hidden classifier projection is only ~8.3k
 parameters, so compression is reported over the dense parameter set and over the

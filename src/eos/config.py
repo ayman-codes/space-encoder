@@ -197,10 +197,34 @@ class TrainConfig(FrozenModel):
     """Lightning trainer and optimizer configuration.
 
     Args:
-        max_epochs (int): Upper bound on training epochs.
+        max_epochs (int): Upper bound on training epochs. The convergence
+            regime treats this as a ceiling: early stopping decides where a run
+            actually ends and the epoch count consumed is recorded per arm.
         learning_rate (float): Peak AdamW learning rate.
         weight_decay (float): AdamW decoupled weight decay.
-        warmup_epochs (int): Linear warmup duration before cosine decay.
+        warmup_epochs (int): Linear warmup duration before the decay regime.
+        lr_scheduler (Literal["cosine", "plateau"]): Decay regime after
+            warmup. ``cosine`` anneals to a fixed floor over the epoch budget;
+            ``plateau`` keeps the peak rate while the monitored metric moves and
+            decays by ``plateau_factor`` once it stalls.
+        plateau_factor (float): Multiplicative learning-rate reduction applied
+            on a plateau, in ``(0, 1)``.
+        plateau_patience (int): Epochs without improvement before the plateau
+            scheduler decays the learning rate.
+        plateau_min_lr (float): Floor the plateau scheduler never goes below.
+        early_stopping_patience (int): Validation checks without improvement
+            before training stops itself. Stopping is checked on the smoothed
+            monitored metric so epoch-level noise cannot fire the rule.
+        early_stopping_min_delta (float): Minimum improvement in the monitored
+            classification metric that resets the stopping counter. Kept below
+            the measured run-to-run noise floor so noise cannot terminate a run
+            that is still learning.
+        early_stopping_min_delta_recon (float): Same bound for the autoencoder
+            arm, whose monitored metric (validation reconstruction MSE) lives
+            near 1e-3 and needs a proportionally smaller bound.
+        monitor_smoothing_window (int): Trailing-mean window applied to the
+            monitored metric before checkpointing, early stopping, and the
+            plateau scheduler see it. A window of one disables smoothing.
         gradient_clip (float): Global gradient norm clipping value.
         precision (Literal["bf16-mixed", "32-true"]): Numerical precision. FP16
             is intentionally excluded because SSIM variance denominators can
@@ -223,13 +247,22 @@ class TrainConfig(FrozenModel):
             without aborting training.
 
     Raises:
-        ValueError: If the warmup does not fit inside the epoch budget.
+        ValueError: If the warmup does not fit inside the epoch budget or the
+            plateau floor is not below the peak learning rate.
     """
 
     max_epochs: int = Field(default=30, ge=1)
     learning_rate: float = Field(default=1e-3, gt=0.0)
     weight_decay: float = Field(default=1e-4, ge=0.0)
     warmup_epochs: int = Field(default=2, ge=0)
+    lr_scheduler: Literal["cosine", "plateau"] = "cosine"
+    plateau_factor: float = Field(default=0.5, gt=0.0, lt=1.0)
+    plateau_patience: int = Field(default=5, ge=1)
+    plateau_min_lr: float = Field(default=1e-6, ge=0.0)
+    early_stopping_patience: int = Field(default=12, ge=0)
+    early_stopping_min_delta: float = Field(default=1e-3, ge=0.0)
+    early_stopping_min_delta_recon: float = Field(default=1e-5, ge=0.0)
+    monitor_smoothing_window: int = Field(default=3, ge=1)
     gradient_clip: float = Field(default=1.0, gt=0.0)
     precision: Literal["bf16-mixed", "32-true"] = "bf16-mixed"
     accelerator: Literal["auto", "gpu", "cpu"] = "auto"
@@ -251,10 +284,13 @@ class TrainConfig(FrozenModel):
             Self: The validated configuration instance.
 
         Raises:
-            ValueError: If ``warmup_epochs`` is not below ``max_epochs``.
+            ValueError: If ``warmup_epochs`` is not below ``max_epochs`` or the
+                plateau floor reaches the peak learning rate.
         """
         if self.warmup_epochs >= self.max_epochs:
             raise ValueError("warmup_epochs must be smaller than max_epochs")
+        if self.plateau_min_lr >= self.learning_rate:
+            raise ValueError("plateau_min_lr must be smaller than learning_rate")
         return self
 
 

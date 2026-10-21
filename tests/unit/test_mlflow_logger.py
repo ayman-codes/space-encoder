@@ -79,16 +79,18 @@ class FakeBackend:
         """
         self._record("set_experiment", name)
 
-    def start_run(self, run_name: str) -> None:
+    def start_run(self, run_name: str, run_id: str | None = None) -> str | None:
         """Record a run start.
 
         Args:
             run_name (str): Run name.
+            run_id (str | None): Existing run to continue.
 
         Returns:
-            None: The call is recorded.
+            str | None: Identifier of the recorded run.
         """
-        self._record("start_run", run_name)
+        self._record("start_run", run_name, run_id)
+        return "fake-run-id"
 
     def log_params(self, params: dict[str, str]) -> None:
         """Record a parameter write.
@@ -435,16 +437,18 @@ class FakeMlflowModule:
         """
         self.calls.append(("set_experiment", name))
 
-    def start_run(self, run_name: str) -> None:
+    def start_run(self, run_name: str, run_id: str | None = None) -> SimpleNamespace:
         """Record a start-run call.
 
         Args:
             run_name (str): Run name.
+            run_id (str | None): Existing run to continue.
 
         Returns:
-            None: The call is recorded.
+            SimpleNamespace: Run-like object carrying the run identifier.
         """
-        self.calls.append(("start_run", run_name))
+        self.calls.append(("start_run", (run_name, run_id)))
+        return SimpleNamespace(info=SimpleNamespace(run_id="module-run"))
 
     def log_params(self, params: dict[str, str]) -> None:
         """Record a parameter call.
@@ -498,15 +502,16 @@ def test_module_backend_delegates_every_operation(
     backend = MlflowModuleBackend()
     backend.set_tracking_uri("http://localhost:5001")
     backend.set_experiment("eos")
-    backend.start_run("run")
+    run_id = backend.start_run("run", "existing-run")
     backend.log_params({"a": "1"})
     backend.log_metrics({"loss": 0.5}, step=2)
     backend.log_artifact("metrics.json")
     backend.end_run()
+    assert run_id == "module-run"
     assert fake.calls == [
         ("set_tracking_uri", "http://localhost:5001"),
         ("set_experiment", "eos"),
-        ("start_run", "run"),
+        ("start_run", ("run", "existing-run")),
         ("log_params", {"a": "1"}),
         ("log_metrics", ({"loss": 0.5}, 2)),
         ("log_artifact", "metrics.json"),
@@ -582,6 +587,61 @@ def test_start_failure_disables_the_tracker(monkeypatch: pytest.MonkeyPatch) -> 
     assert tracker.start() is False
     assert tracker.active is False
     assert tracker.failure == "boom"
+
+
+def test_tracker_adopts_an_existing_run_on_resume(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A resumed job must continue its original tracking run.
+
+    Args:
+        monkeypatch (pytest.MonkeyPatch): Fixture used to fake the health probe.
+
+    Returns:
+        None: Assertions verify the adopted run identifier.
+    """
+    backend = FakeBackend()
+    monkeypatch.setattr(
+        mlflow_logger,
+        "probe_tracking_server",
+        lambda uri, timeout=mlflow_logger.DEFAULT_PROBE_TIMEOUT: True,
+    )
+    tracker = MLflowTracker(
+        tracking_uri="http://localhost:5001",
+        experiment_name="eos-test",
+        run_name="run-2",
+        backend=backend,
+        run_id="prior-run",
+    )
+    assert tracker.run_id is None
+    assert tracker.start() is True
+    assert tracker.run_id == "fake-run-id"
+    starts = [call for call in backend.calls if call[0] == "start_run"]
+    assert starts == [("start_run", ("run-2", "prior-run"), {})]
+
+
+def test_tracker_starts_a_fresh_run_without_an_adoption(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A first attempt must start a new run instead of continuing one.
+
+    Args:
+        monkeypatch (pytest.MonkeyPatch): Fixture used to fake the health probe.
+
+    Returns:
+        None: Assertions verify the fresh run start.
+    """
+    backend = FakeBackend()
+    monkeypatch.setattr(
+        mlflow_logger,
+        "probe_tracking_server",
+        lambda uri, timeout=mlflow_logger.DEFAULT_PROBE_TIMEOUT: True,
+    )
+    tracker = MLflowTracker(
+        tracking_uri="http://localhost:5001",
+        experiment_name="eos-test",
+        run_name="run-1",
+        backend=backend,
+    )
+    assert tracker.start() is True
+    starts = [call for call in backend.calls if call[0] == "start_run"]
+    assert starts == [("start_run", ("run-1", None), {})]
 
 
 def test_close_swallows_backend_failure(monkeypatch: pytest.MonkeyPatch) -> None:

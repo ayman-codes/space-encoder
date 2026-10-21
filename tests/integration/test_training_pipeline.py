@@ -12,9 +12,10 @@ from tests.helpers import build_curated_dataset
 from eos.config import DataConfig, ExperimentConfig, ModelConfig, TrainConfig
 from eos.training import job_metrics
 from eos.training import runner as runner_module
+from eos.training.campaign import JobSpec, run_campaign
 from eos.training.job_metrics import JobMetricsPush, PushPayload
 from eos.training.lightning_module import TrainingMode
-from eos.training.runner import run_experiment
+from eos.training.runner import job_workspace, run_experiment
 
 pytestmark = pytest.mark.integration
 
@@ -29,6 +30,15 @@ class RecordingTracker:
             None: The recorder is initialized in place.
         """
         self.calls: list[str] = []
+
+    @property
+    def run_id(self) -> str | None:
+        """Return the identifier of the active run.
+
+        Returns:
+            str | None: Constant identifier recorded in the job workspace.
+        """
+        return "fake-run-id"
 
     def start(self) -> bool:
         """Record a successful start.
@@ -175,6 +185,8 @@ def test_one_epoch_writes_checkpoint_and_metrics(
     assert payload["dataset"]["version"] == "synthetic-v1.0.0"
     assert payload["budget"]["max_epochs"] == 1
     assert payload["parameter_count"] > 0
+    assert payload["epochs_consumed"] == 1
+    assert payload["stopped_early"] is False
     assert all(math.isfinite(value) for value in payload["metrics"].values())
     assert result.metrics == payload["metrics"]
     if mode in {"hybrid", "classifier"}:
@@ -202,6 +214,8 @@ def test_active_tracker_receives_config_context_and_artifacts(tmp_path: Path) ->
     assert "log_metrics" in tracker.calls
     assert tracker.calls.count("log_artifact") >= 2
     assert tracker.calls[-1] == "close"
+    workspace = job_workspace(_config(dataset, tmp_path), "hybrid")
+    assert workspace.run_id_path.read_text(encoding="utf-8") == "fake-run-id"
 
 
 def test_resume_continues_from_a_saved_checkpoint(tmp_path: Path) -> None:
@@ -329,3 +343,20 @@ def test_failed_run_reports_job_metrics(
     samples = dict(pushed.samples)
     assert samples["eos_train_duration_seconds"] >= 0
     assert "eos_train_fit_seconds" not in samples
+
+
+def test_campaign_reuses_completed_jobs_across_restarts(tmp_path: Path) -> None:
+    """A campaign grid must be re-runnable without retraining finished jobs."""
+    dataset = build_curated_dataset(tmp_path, per_class=12)
+    config = _config(dataset, tmp_path)
+    specs = [JobSpec("classifier", 42), JobSpec("hybrid", 42)]
+    first = run_campaign(config, specs, ledger_path=tmp_path / "ledger.json")
+    assert [plan.action for plan in first.plans] == ["fresh", "fresh"]
+    assert [result.mode for result in first.results] == ["classifier", "hybrid"]
+    assert all(result.epochs_consumed == 1 for result in first.results)
+    second = run_campaign(config, specs, ledger_path=tmp_path / "ledger.json")
+    assert [plan.action for plan in second.plans] == ["skip", "skip"]
+    ledger = json.loads((tmp_path / "ledger.json").read_text(encoding="utf-8"))
+    assert [job["mode"] for job in ledger["jobs"]] == ["classifier", "hybrid"]
+    assert ledger["budget_parity"] is True
+    assert all(job["epochs_consumed"] == 1 for job in ledger["jobs"])

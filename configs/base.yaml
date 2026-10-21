@@ -29,10 +29,18 @@ model:
   ssim_boundary: masked
 
 train:
-  max_epochs: 30
+  max_epochs: 100
   learning_rate: 0.001
   weight_decay: 0.0001
   warmup_epochs: 2
+  lr_scheduler: plateau
+  plateau_factor: 0.5
+  plateau_patience: 5
+  plateau_min_lr: 0.000001
+  early_stopping_patience: 12
+  early_stopping_min_delta: 0.001
+  early_stopping_min_delta_recon: 0.00001
+  monitor_smoothing_window: 3
   gradient_clip: 1.0
   precision: bf16-mixed
   accelerator: auto

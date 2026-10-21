@@ -1,46 +1,57 @@
 """Command line entry point for training and ablation runs.
 
-The ``eos-train`` command exposes one subcommand per ablation arm plus an
+The ``eos-train`` command exposes one subcommand per ablation arm, an
 ``ablation`` command that runs all three arms with identical budgets and writes
-a single JSON evidence document.
+a single JSON evidence document, and a ``campaign`` command that runs an arm by
+seed grid. Both aggregate modes are resumable: completed jobs are reloaded from
+their metrics JSON, interrupted jobs continue from their ``last.ckpt``, and only
+untouched jobs train from scratch.
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 from collections.abc import Sequence
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
 from eos.config import ExperimentConfig, load_config
 from eos.device import cap_vram
+from eos.training.campaign import CAMPAIGN_PATH, JobSpec, run_campaign
 from eos.training.lightning_module import TRAINING_MODES, TrainingMode
-from eos.training.runner import SCHEMA_VERSION, budget_payload, run_experiment, write_json
+from eos.training.runner import (
+    ABLATION_MODES,
+    RunResult,
+    assemble_ablation,
+    job_workspace,
+    load_run_result,
+    run_experiment,
+)
 
 ABLATION_PATH = Path("reports/ablation/ablation.json")
 """Deliverable path for the three-arm ablation summary."""
-
-ABLATION_MODES: tuple[TrainingMode, ...] = ("classifier", "autoencoder", "hybrid")
-"""Arm order used by the ablation command."""
 
 
 def build_parser() -> argparse.ArgumentParser:
     """Build the argument parser.
 
     Returns:
-        argparse.ArgumentParser: Parser with the mode, config, seed,
-            fast-dev-run, max-epochs, and resume options.
+        argparse.ArgumentParser: Parser with the mode, config, seed, budget,
+            resume, and campaign-grid options.
     """
     parser = argparse.ArgumentParser(
         prog="eos-train",
-        description="Train one ablation arm or run the complete ablation.",
+        description=(
+            "Train one ablation arm, the three-arm ablation, or a resumable arm-by-seed campaign."
+        ),
     )
     parser.add_argument(
         "mode",
-        choices=(*TRAINING_MODES, "ablation"),
-        help="Training arm, or 'ablation' to run all three sequentially.",
+        choices=(*TRAINING_MODES, "ablation", "campaign"),
+        help=(
+            "Training arm, 'ablation' to run all three sequentially, or "
+            "'campaign' to run an arm-by-seed grid."
+        ),
     )
     parser.add_argument(
         "--config",
@@ -70,6 +81,44 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="Resume a single arm from a checkpoint such as checkpoints/last.ckpt.",
+    )
+    parser.add_argument(
+        "--seeds",
+        type=int,
+        nargs="+",
+        default=None,
+        help="Seed grid for the campaign mode; defaults to the configured seed.",
+    )
+    parser.add_argument(
+        "--arms",
+        choices=TRAINING_MODES,
+        nargs="+",
+        default=None,
+        help="Arms for the campaign mode; defaults to all three.",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Campaign mode: retrain every job from scratch.",
+    )
+    parser.add_argument(
+        "--assemble-only",
+        action="store_true",
+        help="Campaign mode: write evidence documents from completed jobs without training.",
+    )
+    parser.add_argument(
+        "--ablation-out",
+        type=Path,
+        default=ABLATION_PATH,
+        help="Destination of the three-arm ablation document.",
+    )
+    parser.add_argument(
+        "--ablation-seed",
+        type=int,
+        default=None,
+        help=(
+            "Seed whose three arms form the ablation document; defaults to the first campaign seed."
+        ),
     )
     return parser
 
@@ -130,6 +179,10 @@ def run_ablation(
 ) -> dict[str, object]:
     """Run all three arms and write the ablation JSON.
 
+    The aggregate is resumable: an arm that already wrote its metrics JSON is
+    reloaded instead of retrained, and an interrupted arm continues from its
+    ``last.ckpt``.
+
     Args:
         config (ExperimentConfig): Normalized configuration shared by all arms.
         output_path (Path): Destination JSON path.
@@ -140,34 +193,37 @@ def run_ablation(
     Raises:
         RuntimeError: If the arms do not report identical budget fields.
     """
-    results = [run_experiment(mode, config) for mode in ABLATION_MODES]
-    budgets = {json.dumps(result.budget, sort_keys=True) for result in results}
-    if len(budgets) != 1:
-        raise RuntimeError("ablation arms do not share identical budget fields")
-    payload: dict[str, object] = {
-        "schema_version": SCHEMA_VERSION,
-        "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
-        "dataset": results[0].dataset,
-        "git_commit": results[0].git_commit,
-        "budget": budget_payload(config),
-        "arms": [
-            {
-                "mode": result.mode,
-                "parameter_count": result.parameter_count,
-                "budget": result.budget,
-                "metrics": result.metrics,
-                "checkpoint": (
-                    result.checkpoint_path.as_posix()
-                    if result.checkpoint_path is not None
-                    else None
-                ),
-                "metrics_path": result.metrics_path.as_posix(),
-            }
-            for result in results
-        ],
-    }
-    write_json(output_path, payload)
-    return payload
+    results: list[RunResult] = []
+    for mode in ABLATION_MODES:
+        workspace = job_workspace(config, mode)
+        if workspace.metrics_path.is_file():
+            results.append(load_run_result(workspace.metrics_path))
+            continue
+        resume = workspace.resume_checkpoint if workspace.resume_checkpoint.is_file() else None
+        results.append(run_experiment(mode, config, resume=resume))
+    return assemble_ablation(results, config, output_path)
+
+
+def build_campaign_grid(
+    seeds: Sequence[int] | None,
+    arms: Sequence[TrainingMode] | None,
+    default_seed: int,
+) -> list[JobSpec]:
+    """Build the campaign grid in execution order.
+
+    Args:
+        seeds (Sequence[int] | None): Seed grid; ``None`` selects the default
+            seed.
+        arms (Sequence[TrainingMode] | None): Arms to run; ``None`` selects all
+            three.
+        default_seed (int): Seed used when no grid is given.
+
+    Returns:
+        list[JobSpec]: Jobs ordered seed-major, then by arm.
+    """
+    chosen_seeds = list(seeds) if seeds is not None else [default_seed]
+    chosen_arms = tuple(arms) if arms is not None else TRAINING_MODES
+    return [JobSpec(mode, seed) for seed in chosen_seeds for mode in chosen_arms]
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -184,8 +240,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     """
     parser = build_parser()
     arguments = parser.parse_args(argv)
-    if arguments.mode == "ablation" and arguments.resume is not None:
-        parser.error("--resume is only supported for a single arm")
+    if arguments.mode in ("ablation", "campaign") and arguments.resume is not None:
+        parser.error(
+            "--resume is only supported for a single arm; ablation and campaign "
+            "jobs resume automatically from their workspaces"
+        )
     cap_vram()
     config = apply_overrides(
         load_config(arguments.config),
@@ -193,8 +252,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         arguments.fast_dev_run,
         arguments.max_epochs,
     )
+    if arguments.mode == "campaign":
+        grid = build_campaign_grid(arguments.seeds, arguments.arms, config.train.seed)
+        run_campaign(
+            config,
+            grid,
+            force=arguments.force,
+            assemble_only=arguments.assemble_only,
+            ledger_path=CAMPAIGN_PATH,
+            ablation_path=arguments.ablation_out,
+            ablation_seed=(
+                arguments.ablation_seed if arguments.ablation_seed is not None else grid[0].seed
+            ),
+        )
+        return 0
     if arguments.mode == "ablation":
-        run_ablation(config)
+        run_ablation(config, arguments.ablation_out)
         return 0
     run_experiment(cast(TrainingMode, arguments.mode), config, resume=arguments.resume)
     return 0

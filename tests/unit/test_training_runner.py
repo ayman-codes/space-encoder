@@ -11,9 +11,13 @@ import pytest
 from eos.config import DataConfig, ExperimentConfig, ModelConfig, TrainConfig
 from eos.training import runner as runner_module
 from eos.training.runner import (
+    RunResult,
     _best_checkpoint,
+    assemble_ablation,
     budget_payload,
     build_trainer,
+    job_workspace,
+    load_run_result,
     normalize_fast_dev_run,
     run_experiment,
     validate_consistency,
@@ -123,7 +127,7 @@ def test_build_trainer_uses_autoencoder_monitor(tmp_path: Path) -> None:
     trainer = build_trainer("autoencoder", _config(tmp_path))
     checkpoint = trainer.checkpoint_callback
     assert checkpoint is not None
-    assert checkpoint.monitor == "val/recon_mse"
+    assert checkpoint.monitor == "val/recon_mse_smooth"
     assert checkpoint.mode == "min"
 
 
@@ -175,3 +179,147 @@ def test_run_experiment_requires_a_loaded_manifest(
     monkeypatch.setattr(runner_module, "EuroSATDataModule", FakeDataModule)
     with pytest.raises(RuntimeError, match="manifest"):
         run_experiment("hybrid", _config())
+
+
+def test_job_workspace_isolates_arms_and_seeds(tmp_path: Path) -> None:
+    """Two seeds of one arm must never share artifact locations."""
+    base = _config(tmp_path)
+    first = job_workspace(base, "hybrid")
+    other = job_workspace(
+        base.model_copy(
+            update={"train": base.train.model_copy(update={"seed": 9})},
+        ),
+        "hybrid",
+    )
+    assert first.checkpoint_dir == tmp_path / "checkpoints" / "hybrid-seed7"
+    assert first.report_dir == tmp_path / "reports" / "hybrid" / "seed7"
+    assert first.metrics_path == tmp_path / "reports" / "hybrid" / "seed7" / "metrics.json"
+    assert first.resume_checkpoint == first.checkpoint_dir / "last.ckpt"
+    assert first.run_id_path == first.checkpoint_dir / "mlflow_run_id.txt"
+    assert other.checkpoint_dir != first.checkpoint_dir
+    assert other.metrics_path != first.metrics_path
+    assert job_workspace(base, "classifier").checkpoint_dir != first.checkpoint_dir
+
+
+def test_budget_payload_records_the_convergence_regime(tmp_path: Path) -> None:
+    """The parity record must cover the schedule and the stopping rule."""
+    payload = budget_payload(_config(tmp_path))
+    assert payload["max_epochs"] == 2
+    assert payload["lr_scheduler"] == "cosine"
+    assert payload["plateau_patience"] == 5
+    assert payload["early_stopping_patience"] == 12
+    assert payload["early_stopping_min_delta"] == pytest.approx(1e-3)
+    assert payload["monitor_smoothing_window"] == 3
+
+
+def test_load_run_result_rebuilds_a_completed_run(tmp_path: Path) -> None:
+    """A completed job must be reloadable from its metrics JSON."""
+    payload: dict[str, object] = {
+        "schema_version": 1,
+        "mode": "hybrid",
+        "seed": 7,
+        "resumed_from": None,
+        "dataset": {"version": "v1", "manifest_sha256": "f" * 64},
+        "git_commit": "abc123",
+        "budget": {"max_epochs": 2},
+        "parameter_count": 123,
+        "best_checkpoint": (tmp_path / "hybrid-01.ckpt").as_posix(),
+        "metrics": {"val/macro_f1": 0.5},
+        "epochs_consumed": 2,
+        "stopped_early": True,
+    }
+    path = tmp_path / "metrics.json"
+    write_json(path, payload)
+    result = load_run_result(path)
+    assert result.mode == "hybrid"
+    assert result.seed == 7
+    assert result.checkpoint_path == tmp_path / "hybrid-01.ckpt"
+    assert result.metrics_path == path
+    assert result.metrics["val/macro_f1"] == pytest.approx(0.5)
+    assert result.budget == {"max_epochs": 2}
+    assert result.parameter_count == 123
+    assert result.epochs_consumed == 2
+    assert result.stopped_early is True
+    assert result.resumed_from is None
+    with pytest.raises(FileNotFoundError, match="metrics"):
+        load_run_result(tmp_path / "absent.json")
+
+
+def test_load_run_result_rejects_a_foreign_document(tmp_path: Path) -> None:
+    """A JSON document without a training mode must not be trusted."""
+    path = tmp_path / "metrics.json"
+    write_json(path, {"mode": "seg", "seed": 1})
+    with pytest.raises(ValueError, match="mode"):
+        load_run_result(path)
+
+
+def _result(
+    mode: str, config: ExperimentConfig, budget: dict[str, object] | None = None
+) -> RunResult:
+    """Build a completed run summary for assembly tests.
+
+    Args:
+        mode (str): Ablation arm.
+        config (ExperimentConfig): Configuration the run shares.
+        budget (dict[str, object] | None): Optional budget override.
+
+    Returns:
+        RunResult: Synthetic completed run.
+    """
+    return RunResult(
+        mode=mode,  # type: ignore[arg-type]
+        seed=config.train.seed,
+        checkpoint_path=None,
+        metrics_path=Path("reports") / mode / "metrics.json",
+        metrics={"val/loss": 0.5},
+        budget=budget if budget is not None else budget_payload(config),
+        parameter_count=123,
+        dataset={"version": "v1", "manifest_sha256": "f" * 64},
+        git_commit="abc123",
+        epochs_consumed=2,
+        stopped_early=True,
+    )
+
+
+def test_assemble_ablation_writes_three_arms_with_one_budget(tmp_path: Path) -> None:
+    """The document must record every arm with its consumed epochs."""
+    config = _config(tmp_path)
+    results = [_result(mode, config) for mode in ("classifier", "autoencoder", "hybrid")]
+    output = tmp_path / "ablation.json"
+    payload = assemble_ablation(results, config, output)
+    assert json.loads(output.read_text(encoding="utf-8")) == payload
+    assert [arm["mode"] for arm in payload["arms"]] == ["classifier", "autoencoder", "hybrid"]
+    assert all(arm["budget"] == payload["budget"] for arm in payload["arms"])
+    assert [arm["epochs_consumed"] for arm in payload["arms"]] == [2, 2, 2]
+    assert all(arm["stopped_early"] is True for arm in payload["arms"])
+
+
+def test_assemble_ablation_rejects_divergent_budgets(tmp_path: Path) -> None:
+    """A budget that differs between arms must fail the parity assertion."""
+    config = _config(tmp_path)
+    results = [_result(mode, config) for mode in ("classifier", "autoencoder", "hybrid")]
+    divergent = [
+        results[0],
+        results[1],
+        _result("hybrid", config, budget={**budget_payload(config), "seed": 999}),
+    ]
+    with pytest.raises(RuntimeError, match="identical budget"):
+        assemble_ablation(divergent, config, tmp_path / "ablation.json")
+
+
+def test_assemble_ablation_rejects_a_missing_arm(tmp_path: Path) -> None:
+    """A two-arm campaign must not masquerade as an ablation."""
+    config = _config(tmp_path)
+    results = [_result(mode, config) for mode in ("classifier", "hybrid")]
+    with pytest.raises(RuntimeError, match="missing arms"):
+        assemble_ablation(results, config, tmp_path / "ablation.json")
+
+
+def test_resume_run_id_is_only_adopted_when_resuming(tmp_path: Path) -> None:
+    """A fresh run must not adopt a stored tracking run identifier."""
+    config = _config(tmp_path)
+    workspace = job_workspace(config, "hybrid")
+    workspace.checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    workspace.run_id_path.write_text("prior-run", encoding="utf-8")
+    assert runner_module._resume_run_id(workspace, None) is None
+    assert runner_module._resume_run_id(workspace, workspace.resume_checkpoint) == "prior-run"

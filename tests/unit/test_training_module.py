@@ -16,6 +16,7 @@ from eos.training.lightning_module import (
     TrainingMode,
     build_model,
 )
+from eos.training.lr_schedules import WarmupReduceOnPlateau
 
 
 def _configs() -> tuple[ModelConfig, TrainConfig]:
@@ -194,6 +195,38 @@ def test_optimizer_without_warmup_uses_cosine_directly() -> None:
     settings = module.configure_optimizers()
     scheduler = settings["lr_scheduler"]["scheduler"]
     assert isinstance(scheduler, CosineAnnealingLR)
+
+
+def test_plateau_regime_declares_the_smoothed_monitor() -> None:
+    """The plateau regime must step on the metric the controls observe."""
+    module = _module("hybrid", lr_scheduler="plateau", monitor_smoothing_window=3)
+    settings = module.configure_optimizers()
+    scheduler_config = settings["lr_scheduler"]
+    scheduler = scheduler_config["scheduler"]
+    assert isinstance(scheduler, WarmupReduceOnPlateau)
+    assert scheduler_config["monitor"] == "val/macro_f1_smooth"
+    assert scheduler_config["interval"] == "epoch"
+    assert scheduler_config["strict"] is True
+    assert scheduler.mode == "max"
+    assert scheduler.warmup_epochs == 1
+    assert scheduler.patience == 5
+    assert scheduler.min_lrs == [pytest.approx(1e-6)]
+
+
+def test_plateau_regime_monitors_reconstruction_for_the_autoencoder() -> None:
+    """The autoencoder arm must schedule against reconstruction MSE."""
+    module = _module("autoencoder", lr_scheduler="plateau")
+    settings = module.configure_optimizers()
+    scheduler_config = settings["lr_scheduler"]
+    assert scheduler_config["monitor"] == "val/recon_mse_smooth"
+    assert scheduler_config["scheduler"].mode == "min"
+
+
+def test_plateau_without_smoothing_monitors_the_raw_metric() -> None:
+    """A smoothing window of one must leave the monitored name unchanged."""
+    module = _module("hybrid", lr_scheduler="plateau", monitor_smoothing_window=1)
+    settings = module.configure_optimizers()
+    assert settings["lr_scheduler"]["monitor"] == "val/macro_f1"
 
 
 def test_empty_decay_interval_is_rejected() -> None:

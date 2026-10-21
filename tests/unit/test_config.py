@@ -142,6 +142,45 @@ def test_warmup_must_fit_epochs() -> None:
         TrainConfig(max_epochs=2, warmup_epochs=2)
 
 
+def test_convergence_regime_defaults() -> None:
+    """The stopping and scheduling knobs must carry the planned defaults."""
+    config = TrainConfig()
+    assert config.lr_scheduler == "cosine"
+    assert config.plateau_factor == pytest.approx(0.5)
+    assert config.plateau_patience == 5
+    assert config.early_stopping_patience == 12
+    assert config.early_stopping_min_delta == pytest.approx(1e-3)
+    assert config.early_stopping_min_delta_recon == pytest.approx(1e-5)
+    assert config.monitor_smoothing_window == 3
+
+
+def test_plateau_floor_must_sit_below_the_peak_rate() -> None:
+    """A plateau floor at the peak rate would freeze the learning rate."""
+    with pytest.raises(ValidationError):
+        TrainConfig(lr_scheduler="plateau", learning_rate=1e-3, plateau_min_lr=1e-3)
+
+
+def test_scheduler_choice_is_constrained() -> None:
+    """An unknown decay regime must fail at load time."""
+    with pytest.raises(ValidationError):
+        TrainConfig(lr_scheduler="exponential")
+
+
+def test_smoothing_window_cannot_be_empty() -> None:
+    """A trailing mean needs at least one sample."""
+    with pytest.raises(ValidationError):
+        TrainConfig(monitor_smoothing_window=0)
+
+
+def test_base_yaml_declares_the_convergence_regime() -> None:
+    """The shipped configuration must run to convergence, not to a fixed budget."""
+    config = load_config(Path("configs/base.yaml"))
+    assert config.train.max_epochs == 100
+    assert config.train.lr_scheduler == "plateau"
+    assert config.train.early_stopping_patience == 12
+    assert config.train.monitor_smoothing_window == 3
+
+
 def test_asvd_energy_band() -> None:
     """ASVD energy retention must stay inside [0.90, 0.95]."""
     with pytest.raises(ValidationError):

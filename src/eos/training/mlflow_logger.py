@@ -57,14 +57,18 @@ class MLflowBackend(Protocol):
             None: The experiment is resolved in place.
         """
 
-    def start_run(self, run_name: str) -> None:
-        """Start a tracked run.
+    def start_run(self, run_name: str, run_id: str | None = None) -> str | None:
+        """Start a tracked run or continue an existing one.
 
         Args:
             run_name (str): Human-readable run name.
+            run_id (str | None): Identifier of an existing run to continue, as
+                recorded by a previous attempt at the same job. ``None`` starts
+                a new run.
 
         Returns:
-            None: A run is activated in place.
+            str | None: Identifier of the active run, or ``None`` when the
+            backend does not report one.
         """
 
     def log_params(self, params: Mapping[str, str]) -> None:
@@ -135,18 +139,22 @@ class MlflowModuleBackend:
 
         mlflow.set_experiment(name)
 
-    def start_run(self, run_name: str) -> None:
-        """Start a tracked run.
+    def start_run(self, run_name: str, run_id: str | None = None) -> str | None:
+        """Start a tracked run or continue an existing one.
 
         Args:
             run_name (str): Human-readable run name.
+            run_id (str | None): Identifier of an existing run to continue, as
+                recorded by a previous attempt at the same job. ``None`` starts
+                a new run.
 
         Returns:
-            None: A run is activated in place.
+            str | None: Identifier of the active run.
         """
         import mlflow  # noqa: PLC0415
 
-        mlflow.start_run(run_name=run_name)
+        run = mlflow.start_run(run_name=run_name, run_id=run_id)
+        return str(run.info.run_id)
 
     def log_params(self, params: Mapping[str, str]) -> None:
         """Log scalar parameters.
@@ -320,6 +328,8 @@ class MLflowTracker:
         backend (MLflowBackend): Client facade, injectable for tests.
         enabled (bool): Whether tracking is requested. Defaults to true.
         probe_timeout (float): Health-probe timeout in seconds.
+        run_id (str | None): Existing run to continue, so an interrupted job
+            keeps one continuous metric history when it resumes.
     """
 
     def __init__(  # noqa: PLR0913, PLR0917
@@ -330,6 +340,7 @@ class MLflowTracker:
         backend: MLflowBackend,
         enabled: bool = True,
         probe_timeout: float = DEFAULT_PROBE_TIMEOUT,
+        run_id: str | None = None,
     ) -> None:
         """Store the client configuration without contacting the server.
 
@@ -340,6 +351,7 @@ class MLflowTracker:
             backend (MLflowBackend): Client facade.
             enabled (bool): Whether tracking is requested.
             probe_timeout (float): Health-probe timeout in seconds.
+            run_id (str | None): Existing run to continue on start.
 
         Returns:
             None: The tracker starts inactive until :meth:`start` succeeds.
@@ -350,6 +362,8 @@ class MLflowTracker:
         self.backend = backend
         self.enabled = enabled
         self.probe_timeout = probe_timeout
+        self._requested_run_id = run_id
+        self._run_id: str | None = None
         self._active = False
         self._artifacts_enabled = True
         self._failure: str | None = None
@@ -360,6 +374,7 @@ class MLflowTracker:
         experiment_name: str,
         run_name: str,
         enabled: bool = True,
+        run_id: str | None = None,
     ) -> MLflowTracker:
         """Build a tracker from environment-backed service settings.
 
@@ -367,6 +382,7 @@ class MLflowTracker:
             experiment_name (str): Experiment name.
             run_name (str): Run name.
             enabled (bool): Whether tracking is requested.
+            run_id (str | None): Existing run to continue on start.
 
         Returns:
             MLflowTracker: Tracker bound to ``ServiceSettings``.
@@ -378,7 +394,18 @@ class MLflowTracker:
             run_name=run_name,
             backend=MlflowModuleBackend(),
             enabled=enabled,
+            run_id=run_id,
         )
+
+    @property
+    def run_id(self) -> str | None:
+        """Return the identifier of the active run.
+
+        Returns:
+            str | None: Run identifier reported by the backend at start, or
+            ``None`` when tracking is inactive or the backend keeps no identity.
+        """
+        return self._run_id
 
     @property
     def active(self) -> bool:
@@ -421,7 +448,7 @@ class MLflowTracker:
         try:
             self.backend.set_tracking_uri(self.tracking_uri)
             self.backend.set_experiment(self.experiment_name)
-            self.backend.start_run(self.run_name)
+            self._run_id = self.backend.start_run(self.run_name, self._requested_run_id)
         except Exception as error:
             self._disable(str(error))
             return False
