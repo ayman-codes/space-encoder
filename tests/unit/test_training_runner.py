@@ -323,3 +323,20 @@ def test_resume_run_id_is_only_adopted_when_resuming(tmp_path: Path) -> None:
     workspace.run_id_path.write_text("prior-run", encoding="utf-8")
     assert runner_module._resume_run_id(workspace, None) is None
     assert runner_module._resume_run_id(workspace, workspace.resume_checkpoint) == "prior-run"
+
+
+def test_job_workspace_separates_experiment_variants(tmp_path: Path) -> None:
+    """A variant tag must keep two experiments from sharing one workspace."""
+    base = _config(tmp_path)
+    tagged = base.model_copy(
+        update={"train": base.train.model_copy(update={"run_tag": "lambda03"})}
+    )
+    plain = job_workspace(base, "hybrid")
+    variant = job_workspace(tagged, "hybrid")
+    assert plain.checkpoint_dir == tmp_path / "checkpoints" / "hybrid-seed7"
+    assert variant.checkpoint_dir == tmp_path / "checkpoints" / "hybrid-seed7-lambda03"
+    assert variant.metrics_path == (
+        tmp_path / "reports" / "hybrid" / "seed7-lambda03" / "metrics.json"
+    )
+    assert variant.resume_checkpoint != plain.resume_checkpoint
+    assert budget_payload(tagged)["run_tag"] == "lambda03"

@@ -107,6 +107,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Campaign mode: write evidence documents from completed jobs without training.",
     )
     parser.add_argument(
+        "--ledger-out",
+        type=Path,
+        default=CAMPAIGN_PATH,
+        help="Destination of the campaign job ledger.",
+    )
+    parser.add_argument(
         "--ablation-out",
         type=Path,
         default=ABLATION_PATH,
@@ -259,7 +265,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             grid,
             force=arguments.force,
             assemble_only=arguments.assemble_only,
-            ledger_path=CAMPAIGN_PATH,
+            ledger_path=arguments.ledger_out,
             ablation_path=arguments.ablation_out,
             ablation_seed=(
                 arguments.ablation_seed if arguments.ablation_seed is not None else grid[0].seed

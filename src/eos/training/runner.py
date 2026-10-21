@@ -96,16 +96,20 @@ def job_workspace(config: ExperimentConfig, mode: TrainingMode) -> JobWorkspace:
     """Derive the isolated artifact locations for one job.
 
     Args:
-        config (ExperimentConfig): Normalized configuration; its seed selects
-            the workspace.
+        config (ExperimentConfig): Normalized configuration; its seed and run
+            tag select the workspace.
         mode (TrainingMode): Ablation arm.
 
     Returns:
-        JobWorkspace: Checkpoint and report locations keyed by arm and seed.
+        JobWorkspace: Checkpoint and report locations keyed by arm, seed, and
+        variant tag.
     """
     seed = config.train.seed
-    checkpoint_dir = config.train.checkpoint_dir / f"{mode}-seed{seed}"
-    report_dir = config.train.report_dir / mode / f"seed{seed}"
+    tag = config.train.run_tag
+    name = f"{mode}-seed{seed}" if not tag else f"{mode}-seed{seed}-{tag}"
+    report = f"seed{seed}" if not tag else f"seed{seed}-{tag}"
+    checkpoint_dir = config.train.checkpoint_dir / name
+    report_dir = config.train.report_dir / mode / report
     return JobWorkspace(
         checkpoint_dir=checkpoint_dir,
         report_dir=report_dir,
@@ -249,6 +253,7 @@ def budget_payload(config: ExperimentConfig) -> dict[str, object]:
         "early_stopping_min_delta": config.train.early_stopping_min_delta,
         "early_stopping_min_delta_recon": config.train.early_stopping_min_delta_recon,
         "monitor_smoothing_window": config.train.monitor_smoothing_window,
+        "run_tag": config.train.run_tag,
         "gradient_clip": config.train.gradient_clip,
         "precision": config.train.precision,
         "accelerator": config.train.accelerator,
@@ -489,7 +494,9 @@ def _start_run(
     class_weights = datamodule.class_weights if config.train.class_weights else None
     module = EOSTrainingModule(mode, config.model, config.train, class_weights=class_weights)
     git_commit = resolve_git_commit()
-    run_name = f"{mode}-seed{seed}-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
+    tag = config.train.run_tag
+    label = f"{mode}-seed{seed}" if not tag else f"{mode}-seed{seed}-{tag}"
+    run_name = f"{label}-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
     active_tracker = tracker or MLflowTracker.from_settings(
         experiment_name=config.train.mlflow_experiment,
         run_name=run_name,

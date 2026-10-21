@@ -88,6 +88,8 @@ def test_parse_args_reads_the_campaign_grid() -> None:
             "--assemble-only",
             "--ablation-seed",
             "42",
+            "--ledger-out",
+            "reports/ablation/variant.json",
         ]
     )
     assert arguments.mode == "campaign"
@@ -95,6 +97,7 @@ def test_parse_args_reads_the_campaign_grid() -> None:
     assert arguments.arms == ["classifier", "hybrid"]
     assert arguments.assemble_only is True
     assert arguments.ablation_seed == 42
+    assert arguments.ledger_out == Path("reports/ablation/variant.json")
     assert arguments.force is False
 
 
@@ -435,7 +438,9 @@ def test_main_dispatches_campaign(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(cli, "load_config", lambda path: _config())
     monkeypatch.setattr(cli, "run_campaign", _fake_campaign)
-    assert cli.main(["campaign", "--seeds", "42", "7", "--force"]) == 0
+    assert (
+        cli.main(["campaign", "--seeds", "42", "7", "--force", "--ledger-out", "ledger.json"]) == 0
+    )
     assert captured["specs"] == [
         (42, "hybrid"),
         (42, "classifier"),
@@ -448,3 +453,4 @@ def test_main_dispatches_campaign(monkeypatch: pytest.MonkeyPatch) -> None:
     assert captured["assemble_only"] is False
     assert captured["ablation_path"] == cli.ABLATION_PATH
     assert captured["ablation_seed"] == 42
+    assert captured["ledger_path"] == Path("ledger.json")

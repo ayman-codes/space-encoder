@@ -172,6 +172,16 @@ def test_smoothing_window_cannot_be_empty() -> None:
         TrainConfig(monitor_smoothing_window=0)
 
 
+def test_run_tag_names_a_variant_without_loosening_the_contract() -> None:
+    """The variant slug must be optional and strictly slug-shaped."""
+    assert TrainConfig().run_tag == ""
+    assert TrainConfig(run_tag="lambda03").run_tag == "lambda03"
+    with pytest.raises(ValidationError):
+        TrainConfig(run_tag="Lambda 03")
+    with pytest.raises(ValidationError):
+        TrainConfig(run_tag="../escape")
+
+
 def test_base_yaml_declares_the_convergence_regime() -> None:
     """The shipped configuration must run to convergence, not to a fixed budget."""
     config = load_config(Path("configs/base.yaml"))

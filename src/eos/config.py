@@ -225,6 +225,10 @@ class TrainConfig(FrozenModel):
         monitor_smoothing_window (int): Trailing-mean window applied to the
             monitored metric before checkpointing, early stopping, and the
             plateau scheduler see it. A window of one disables smoothing.
+        run_tag (str): Optional slug naming an experiment variant. It is
+            appended to the job workspace and the run name so two variants
+            sharing an arm and seed can never overwrite each other's evidence.
+            Empty by default; restricted to ``[a-z0-9_-]``.
         gradient_clip (float): Global gradient norm clipping value.
         precision (Literal["bf16-mixed", "32-true"]): Numerical precision. FP16
             is intentionally excluded because SSIM variance denominators can
@@ -263,6 +267,7 @@ class TrainConfig(FrozenModel):
     early_stopping_min_delta: float = Field(default=1e-3, ge=0.0)
     early_stopping_min_delta_recon: float = Field(default=1e-5, ge=0.0)
     monitor_smoothing_window: int = Field(default=3, ge=1)
+    run_tag: str = Field(default="", max_length=32, pattern=r"^[a-z0-9_-]*$")
     gradient_clip: float = Field(default=1.0, gt=0.0)
     precision: Literal["bf16-mixed", "32-true"] = "bf16-mixed"
     accelerator: Literal["auto", "gpu", "cpu"] = "auto"
