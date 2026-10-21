@@ -47,6 +47,10 @@ SKIP_DIRECTORIES = frozenset(
 
 SKIP_PREFIXES = ("pytest-of-", "torchinductor_")
 
+SCRAP_NAMES = frozenset({".ipynb_checkpoints", "Thumbs.db", "desktop.ini", "plan", "temp", "tmp"})
+SCRAP_PREFIXES = ("pytest-of-", "torchinductor_")
+SCRAP_SUFFIXES = (".tmp", ".bak", ".orig", ".swp", "~")
+
 ALLOWED_COMMENT_PATTERNS = (
     re.compile(r"^#!\s*\S"),
     re.compile(r"^#\s*type:\s*ignore"),
@@ -263,6 +267,67 @@ def scan_tree(root: Path) -> list[Violation]:
     for notebook in notebooks:
         violations.extend(scan_notebook(notebook))
     return violations
+
+
+def _is_scrap_name(name: str) -> bool:
+    """Report whether a file or directory name marks scrap that must be deleted.
+
+    Args:
+        name (str): Candidate file or directory name.
+
+    Returns:
+        bool: True when the name matches a known temporary artifact pattern.
+    """
+    return name in SCRAP_NAMES or name.startswith(SCRAP_PREFIXES) or name.endswith(SCRAP_SUFFIXES)
+
+
+def scan_scrap(root: Path) -> list[Violation]:
+    """Detect temporary artifacts that must never live in the tracked tree.
+
+    Pytest basetemp folders, torch Inductor caches, editor backups, and
+    throwaway plan directories are reported as ``SCR001`` so the contract gate
+    fails before scrap accumulates. Sanctioned cache and data directories are
+    pruned because scratch output is legitimate under ``.cache``.
+
+    Args:
+        root (Path): Repository root.
+
+    Returns:
+        list[Violation]: One violation per offending file or directory, sorted by path.
+    """
+    violations: list[Violation] = []
+    for dirpath, dirnames, filenames in root.walk():
+        relative_dir = dirpath.relative_to(root)
+        for name in sorted(dirnames):
+            if _is_scrap_name(name):
+                violations.append(
+                    Violation(
+                        path=(relative_dir / name).as_posix(),
+                        line=1,
+                        code="SCR001",
+                        message=(
+                            f"scrap directory {name!r} must be deleted; "
+                            "scratch output belongs under .cache/"
+                        ),
+                    )
+                )
+        dirnames[:] = [
+            name for name in dirnames if name not in SKIP_DIRECTORIES and not _is_scrap_name(name)
+        ]
+        for name in sorted(filenames):
+            if _is_scrap_name(name):
+                violations.append(
+                    Violation(
+                        path=(relative_dir / name).as_posix(),
+                        line=1,
+                        code="SCR001",
+                        message=(
+                            f"temporary file {name!r} must be deleted; "
+                            "scratch output belongs under .cache/"
+                        ),
+                    )
+                )
+    return sorted(violations, key=lambda violation: violation.path)
 
 
 def validate_configs(directory: Path) -> list[Violation]:

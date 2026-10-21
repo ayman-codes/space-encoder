@@ -7,6 +7,7 @@ from pathlib import Path
 
 from eos.contracts import (
     scan_notebook,
+    scan_scrap,
     scan_source,
     scan_tree,
     validate_configs,
@@ -123,3 +124,55 @@ def test_dataset_contracts_validate(tmp_path: Path) -> None:
     contract.write_text("dataset: broken\nversion: nope\n", encoding="utf-8")
     violations = validate_dataset_contracts(tmp_path)
     assert [violation.code for violation in violations] == ["CTR001"]
+
+
+def test_scan_scrap_detects_pytest_and_torchinductor_directories(tmp_path: Path) -> None:
+    """Pytest basetemp folders and torch Inductor caches must be reported."""
+    (tmp_path / "pytest-of-runner").mkdir()
+    (tmp_path / "torchinductor_runner").mkdir()
+    violations = scan_scrap(tmp_path)
+    assert [violation.code for violation in violations] == ["SCR001", "SCR001"]
+    assert {violation.path for violation in violations} == {
+        "pytest-of-runner",
+        "torchinductor_runner",
+    }
+
+
+def test_scan_scrap_detects_backup_files(tmp_path: Path) -> None:
+    """Editor backups and operating system junk files must be reported."""
+    expected = {
+        "notes.tmp",
+        "notes.bak",
+        "notes.orig",
+        "notes.swp",
+        "notes~",
+        "Thumbs.db",
+        "desktop.ini",
+    }
+    for name in expected:
+        (tmp_path / name).write_text("junk", encoding="utf-8")
+    violations = scan_scrap(tmp_path)
+    assert {violation.path for violation in violations} == expected
+    assert all(violation.code == "SCR001" for violation in violations)
+
+
+def test_scan_scrap_detects_throwaway_plan_directories(tmp_path: Path) -> None:
+    """Scratch plan and temporary directories must be reported as scrap."""
+    (tmp_path / "temp" / "plan").mkdir(parents=True)
+    (tmp_path / "plan").mkdir()
+    violations = scan_scrap(tmp_path)
+    assert {violation.path for violation in violations} == {"plan", "temp"}
+
+
+def test_scan_scrap_ignores_scrap_inside_cache_directories(tmp_path: Path) -> None:
+    """Scratch artifacts under sanctioned cache directories are legitimate."""
+    (tmp_path / ".cache" / "tmp" / "pytest-of-runner").mkdir(parents=True)
+    (tmp_path / ".cache" / "tmp" / "torchinductor_runner").mkdir(parents=True)
+    assert scan_scrap(tmp_path) == []
+
+
+def test_scan_scrap_accepts_clean_tree(tmp_path: Path) -> None:
+    """A clean repository must produce no scrap violations."""
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "module.py").write_text('"""Doc."""\n', encoding="utf-8")
+    assert scan_scrap(tmp_path) == []

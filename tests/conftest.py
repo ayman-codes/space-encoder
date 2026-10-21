@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-import torch
+from eos.tempdir import use_repo_scratch_space
+
+use_repo_scratch_space()
+
+import torch  # noqa: E402
 
 
 def pytest_configure() -> None:

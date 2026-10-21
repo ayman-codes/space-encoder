@@ -6,7 +6,12 @@ cd "$repo_root"
 
 export PRE_COMMIT_HOME="$repo_root/.cache/pre-commit"
 export UV_CACHE_DIR="$repo_root/.cache/uv"
+export TMPDIR="$repo_root/.cache/tmp"
+export TMP="$TMPDIR"
+export TEMP="$TMPDIR"
+export TORCHINDUCTOR_CACHE_DIR="$TMPDIR/torchinductor"
 export PYTHONUTF8=1
+mkdir -p "$TMPDIR"
 
 if [ -x "$repo_root/.venv/Scripts/python.exe" ]; then
     python_bin="$repo_root/.venv/Scripts/python.exe"

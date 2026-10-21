@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from eos.contracts import scan_tree, validate_configs, validate_dataset_contracts
+from eos.contracts import scan_scrap, scan_tree, validate_configs, validate_dataset_contracts
 
 
 def main() -> int:
@@ -15,7 +15,8 @@ def main() -> int:
         int: Process exit code, zero when the repository is compliant.
     """
     root = Path(__file__).resolve().parents[1]
-    violations = scan_tree(root)
+    violations = scan_scrap(root)
+    violations.extend(scan_tree(root))
     violations.extend(validate_configs(root / "configs"))
     violations.extend(validate_dataset_contracts(root / "data" / "contracts"))
     for violation in violations:

@@ -135,6 +135,7 @@ filterwarnings = ["error::DeprecationWarning:eos.*"]
 [tool.coverage.run]
 source = ["src/eos"]
 branch = true
+data_file = ".cache/tmp/.coverage"
 
 [tool.coverage.report]
 fail_under = 85

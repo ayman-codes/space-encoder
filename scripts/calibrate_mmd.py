@@ -33,6 +33,7 @@ from eos.model.compression import SCOPE_PATHS, ASVDResult, factorize_module, sta
 from eos.telemetry.export import TelemetryPush, build_mmd_payload
 from eos.telemetry.mmd import MMDBaseline, calibrate_baseline
 from eos.telemetry.mmd_drift import DriftMonitor, model_fingerprint
+from eos.tempdir import use_repo_scratch_space
 from eos.training.lightning_module import EOSTrainingModule
 
 LOGGER = logging.getLogger(__name__)
@@ -141,6 +142,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         ValueError: If the datamodule produces no manifest or the requested
             ASVD scope is unknown.
     """
+    use_repo_scratch_space()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     args = build_parser().parse_args(argv)
     config = load_config(args.config)

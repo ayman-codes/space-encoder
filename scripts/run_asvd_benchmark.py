@@ -45,6 +45,7 @@ from eos.model.compression import (
 from eos.model.hybrid_cae import ConvAE, PureCNN
 from eos.telemetry.export import TelemetryPush, build_asvd_payload
 from eos.telemetry.mmd_drift import model_fingerprint
+from eos.tempdir import use_repo_scratch_space
 from eos.training.lightning_module import EOSTrainingModule
 
 LOGGER = logging.getLogger(__name__)
@@ -408,6 +409,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         FileNotFoundError: If a checkpoint does not exist.
         ValueError: If the datamodule produces no manifest or a scope is unknown.
     """
+    use_repo_scratch_space()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     args = build_parser().parse_args(argv)
     config = load_config(args.config)
