@@ -113,6 +113,7 @@ def discover_runs(
     tracking_uri: str,
     experiment_name: str,
     min_epochs: int,
+    run_tag: str = "",
 ) -> tuple[RunRecord, ...]:
     """Find the finished full-budget runs of an experiment.
 
@@ -120,6 +121,9 @@ def discover_runs(
         tracking_uri (str): MLflow tracking server URI.
         experiment_name (str): Experiment name.
         min_epochs (int): Minimum recorded epoch budget for a run to qualify.
+        run_tag (str): Variant slug a run must carry to qualify. Empty selects
+            the untagged runs of the main campaign; runs recorded before the
+            tag existed count as untagged.
 
     Returns:
         tuple[RunRecord, ...]: Qualified runs ordered by seed, arm, and start
@@ -148,6 +152,8 @@ def discover_runs(
             continue
         epochs = int(params.get("train.max_epochs", "0"))
         if epochs < min_epochs:
+            continue
+        if params.get("train.run_tag", "") != run_tag:
             continue
         seed_value = params.get("run/seed")
         if seed_value is None:
@@ -372,6 +378,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--experiment", default=DEFAULT_EXPERIMENT)
     parser.add_argument("--min-epochs", type=int, default=30)
+    parser.add_argument(
+        "--run-tag",
+        default="",
+        help="Variant slug a run must carry; empty selects the untagged main campaign.",
+    )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--cache-dir", type=Path, default=DEFAULT_CACHE_DIR)
     parser.add_argument("--showcase-seed", type=int, default=EVIDENCE_SEED)
@@ -404,7 +415,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     manifest = datamodule.manifest
     if manifest is None:
         raise ValueError("the datamodule produced no manifest")
-    records = discover_runs(args.tracking_uri, args.experiment, args.min_epochs)
+    records = discover_runs(args.tracking_uri, args.experiment, args.min_epochs, args.run_tag)
     LOGGER.info("discovered %d full-budget runs", len(records))
     if not records:
         raise ValueError("no runs qualified; check the tracking URI and epoch filter")
