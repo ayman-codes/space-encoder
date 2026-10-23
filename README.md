@@ -136,58 +136,6 @@ space-encoder/
 
 ---
 
-## Codebase Flow
-
-### Stage 1 — Data engineering (`src/eos/dataset/`, `scripts/fetch_eurosat.py`)
-
-| Module | Role |
-|---|---|
-| `ingest.py` / `cli.py` | Download with retries, ranged resume, pinned SHA-256 check |
-| `validate.py` | Decode every image; exact and perceptual duplicate detection; quarantine |
-| `splits.py` | Deterministic, group-aware, stratified 70/15/15 assignment (seed 42) |
-| `curate.py` / `storage.py` | Image memmap, labels, split indices, channel statistics |
-| `manifest.py` | Content-addressed manifest with fingerprint `f7ccc0bc…f9754570` |
-| `eurosat_datamodule.py` | `LightningDataModule` with augmentation-free test transforms |
-
-### Stage 2 — Models and objectives (`src/eos/model/`)
-
-| Module | Role |
-|---|---|
-| `encoder.py` / `decoder.py` | Exact `64 → 32 → 16 → 8 → 4` strided convs; symmetric `ConvTranspose2d` decoder |
-| `classifier.py` | Hidden projection + 10-class logits head |
-| `hybrid_cae.py` | `HybridCAE`, `PureCNN`, `ConvAE` — identical components, different objectives |
-| `losses.py` | Composite `α·MSE + (1−α)(1−SSIM)` with masked/valid boundary policies (F-001) |
-| `experiments/ssim_boundary.py` | Bounded study: what the SSIM boundary policy actually penalizes |
-
-### Stage 3 — Training (`src/eos/training/`)
-
-| Module | Role |
-|---|---|
-| `lightning_module.py` | One `LightningModule` for all three arms; scheduled λ(t) reconstruction weight |
-| `runner.py` | Trainer construction, callbacks, budget normalization, resume |
-| `mlflow_logger.py` | Parameter flattening, per-epoch metrics, artifact logging |
-| `job_metrics.py` | Prometheus job wall/GPU times pushed via Pushgateway |
-| `cli.py` | `eos-train` with `hybrid`, `classifier`, `autoencoder`, `ablation` |
-
-### Stage 4 — Evaluation and evidence (`src/eos/evaluation.py`, `scripts/build_evidence.py`)
-
-| Component | Role |
-|---|---|
-| `load_module_from_checkpoint` | Rebuilds a module from the provenance inside every checkpoint — no config drift |
-| `evaluate_classification` / `evaluate_reconstruction` | Macro-F1, per-class F1, confusion; MSE + SSIM masked + SSIM valid |
-| `collect_embeddings` / `collect_recon_samples` | Deterministic, class-balanced latent and image sampling |
-| `scripts/build_evidence.py` | MLflow discovery → checkpoint cache → full re-evaluation → committed bundle |
-
-### Stage 5 — Deliverable notebook (`notebooks/01_hybrid_autoencoder.ipynb`)
-
-Self-bootstrapping (Colab clone + install), CPU `fast-dev-run` profile,
-load-and-re-evaluate narrative path, ablation table, multi-seed distributions,
-per-class slice, confusion matrices, patch grids across all 10 classes, residual
-heatmaps, PCA/t-SNE/3D latent projections, loss trajectories, and the findings
-cell. It never retrains models to produce results.
-
----
-
 ## Core Competency
 
 ### Optimization
